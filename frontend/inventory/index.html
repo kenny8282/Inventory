@@ -1,0 +1,2318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Gridfinity Inventory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Archivo:wght@500;700;800;900&display=swap" rel="stylesheet">
+<!-- jsQR for camera QR scanning -->
+<script>window.__jsqrLoaded=false;</script>
+<script
+  src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"
+  onload="window.__jsqrLoaded=true"
+  onerror="console.error('jsQR failed to load from jsDelivr')"></script>
+<script>
+  // Fallback to cdnjs if jsDelivr failed
+  if (!window.__jsqrLoaded) {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.js';
+    s.onload = () => { window.__jsqrLoaded = true; };
+    s.onerror = () => console.error('jsQR failed to load from cdnjs too');
+    document.head.appendChild(s);
+  }
+</script>
+<style>
+  :root {
+    --bg: #ece8de;
+    --paper: #fdfcf7;
+    --ink: #161616;
+    --accent: #c8341a;
+    --accent-2: #1a4d8f;
+    --green: #1a5d1a;
+    --muted: #6b6862;
+    --grid: rgba(22,22,22,0.05);
+    --row-alt: #f5f2e9;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    line-height: 1.45;
+    min-height: 100vh;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 42px 42px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .app {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 16px 12px 80px;
+  }
+  /* ---- HEADER ---- */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 10px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  h1 {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 900;
+    font-size: 22px;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+  h1 a { color: inherit; text-decoration: none; }
+  h1 .accent { color: var(--accent); }
+  header .home-link {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    border: 1px solid var(--muted);
+    padding: 4px 8px;
+    font-weight: 700;
+    font-family: 'Archivo', sans-serif;
+  }
+  header .home-link:hover { color: var(--ink); border-color: var(--ink); }
+
+  /* ---- TABS ---- */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--ink);
+    margin-bottom: 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tab {
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 10px 16px;
+    font-family: 'Archivo', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    color: var(--muted);
+    white-space: nowrap;
+    margin-bottom: -1px;
+  }
+  .tab.active {
+    color: var(--ink);
+    border-bottom-color: var(--accent);
+  }
+  .tab:hover { color: var(--ink); }
+  .tab-badge {
+    display: none;
+    background: var(--accent);
+    color: var(--paper);
+    border-radius: 999px;
+    font-size: 10px;
+    padding: 1px 7px;
+    margin-left: 6px;
+    font-weight: 800;
+    vertical-align: middle;
+    line-height: 1.4;
+  }
+  .tab-badge.show { display: inline-block; }
+
+  /* ---- PANELS ---- */
+  .panel {
+    background: var(--paper);
+    border: 1.5px solid var(--ink);
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  .panel h2 {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 800;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px dashed var(--ink);
+  }
+
+  /* ---- FIELDS ---- */
+  .field { margin-bottom: 12px; }
+  label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  input[type="text"], input[type="number"], textarea, select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--ink);
+    padding: 10px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    color: var(--ink);
+    border-radius: 0;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  textarea { min-height: 60px; resize: vertical; }
+  input:focus, textarea:focus, select:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  /* ---- BUTTONS ---- */
+  button {
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    padding: 12px 16px;
+    font-family: 'Archivo', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  button:active { background: var(--accent); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.secondary {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--ink);
+  }
+  button.secondary:active { background: var(--ink); color: var(--paper); }
+  button.green { background: var(--green); }
+  button.green:active { background: #0f3d0f; }
+  button.warn { background: var(--accent); }
+  button.large {
+    padding: 18px 20px;
+    font-size: 14px;
+    width: 100%;
+  }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  .btn-row button { flex: 1; min-width: 0; }
+
+  /* ---- SCAN PANEL ---- */
+  .scan-card {
+    background: var(--paper);
+    border: 1.5px solid var(--ink);
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .scan-frame {
+    position: relative;
+    width: 100%;
+    max-width: 360px;
+    margin: 0 auto;
+    aspect-ratio: 1;
+    background: #000;
+    overflow: hidden;
+    border: 2px solid var(--ink);
+  }
+  .scan-frame video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .scan-frame canvas { display: none; }
+  .scan-status {
+    margin-top: 12px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    min-height: 18px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  /* Floating camera button (flashlight, etc.) — sits over the video */
+  .cam-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 10;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,0.4);
+    background: rgba(0,0,0,0.55);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  .cam-btn:active {
+    transform: scale(0.95);
+  }
+  .cam-btn.on {
+    background: #ffd84a;
+    color: #1a1a1a;
+    border-color: #ffd84a;
+    box-shadow: 0 0 14px rgba(255, 216, 74, 0.6);
+  }
+  /* ---- SCAN TAB SEARCH BAR ---- */
+  .search-bar {
+    position: relative;
+    margin-bottom: 12px;
+  }
+  .search-bar input {
+    background: var(--paper);
+    border: 1.5px solid var(--ink);
+    padding: 12px 14px;
+    font-size: 15px;
+    width: 100%;
+  }
+
+  /* ---- TARGETING BOX OVERLAY ----
+     Rounded rectangle viewport with feathered dim mask. Corner brackets
+     pulse subtly and the progress arc draws around all four sides as the
+     dwell timer fills. State changes (idle → locking → locked) animate. */
+  .target-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .target-overlay svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .target-overlay .mask {
+    fill: rgba(8, 12, 16, 0.62);
+    fill-rule: evenodd;
+  }
+  /* Soft inner border that hugs the cutout — subtle by default */
+  .target-overlay .frame {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.32);
+    stroke-width: 0.6;
+    transition: stroke 0.2s ease, stroke-width 0.2s ease;
+  }
+  .target-overlay.locking .frame {
+    stroke: rgba(255, 200, 0, 0.6);
+    stroke-width: 0.8;
+  }
+  .target-overlay.locked .frame {
+    stroke: rgba(74, 222, 128, 0.95);
+    stroke-width: 1.2;
+  }
+  /* Corner brackets — short hairlines at each corner of the viewport */
+  .target-overlay .corner {
+    fill: none;
+    stroke: white;
+    stroke-width: 1.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 0 1.5px rgba(0,0,0,0.6));
+    transition: stroke 0.2s ease;
+  }
+  .target-overlay.locking .corner { stroke: #ffcc33; }
+  .target-overlay.locked  .corner { stroke: #4ade80; }
+  /* Progress arc — traces the viewport rectangle clockwise as dwell builds */
+  .target-overlay .progress {
+    fill: none;
+    stroke: #4ade80;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 0 2px rgba(74, 222, 128, 0.7));
+    transition: stroke-dashoffset 0.08s linear;
+  }
+  /* The targeting box itself - a subtle inner border drawn as a path so we
+     can include rounded corners. Total path length used by progress is 176. */
+  .scan-controls {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .scan-controls button { flex: 1; }
+  .scan-flash {
+    position: absolute;
+    inset: 0;
+    background: var(--green);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.1s;
+  }
+  .scan-flash.flash {
+    opacity: 0.7;
+    animation: flashOut 0.4s ease-out forwards;
+  }
+  @keyframes flashOut {
+    0% { opacity: 0.7; }
+    100% { opacity: 0; }
+  }
+
+  /* ---- DETAIL CARD ---- */
+  .detail-card {
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .detail-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .detail-type {
+    display: inline-block;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 3px 8px;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-family: 'Archivo', sans-serif;
+    font-weight: 700;
+    margin-top: 4px;
+  }
+  .detail-type.bin { background: var(--accent-2); }
+  .detail-type.container { background: var(--green); }
+  .detail-desc {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 900;
+    font-size: 26px;
+    letter-spacing: -0.015em;
+    margin-top: 4px;
+    margin-bottom: 8px;
+    line-height: 1.05;
+  }
+  .detail-field {
+    margin-top: 10px;
+    font-size: 13px;
+  }
+  .detail-field .k {
+    display: inline-block;
+    min-width: 80px;
+    color: var(--muted);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+  }
+
+  /* ---- LISTS ---- */
+  .item-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .item-row {
+    background: var(--bg);
+    border: 1px solid var(--ink);
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: background 0.1s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .item-row:active { background: var(--ink); color: var(--paper); }
+  .item-row .ititle {
+    flex: 1;
+    font-weight: 600;
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  .item-row .iid {
+    font-weight: 400;
+    color: var(--muted);
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.05em;
+    opacity: 0.6;
+  }
+  .item-row:active .iid { color: rgba(255,255,255,0.5); }
+  .item-row .imeta {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .item-row:active .imeta { color: rgba(255,255,255,0.7); }
+  .item-row .ibadge {
+    font-size: 9px;
+    padding: 2px 6px;
+    background: var(--green);
+    color: white;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-family: 'Archivo', sans-serif;
+  }
+  .item-row .ibadge.bin { background: var(--accent-2); }
+  .empty-state {
+    text-align: center;
+    padding: 32px 12px;
+    color: var(--muted);
+    font-style: italic;
+    font-size: 13px;
+  }
+
+  /* ---- AUTOCOMPLETE ---- */
+  .autocomplete {
+    position: relative;
+  }
+  .autocomplete-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--paper);
+    border: 1px solid var(--ink);
+    border-top: none;
+    max-height: 180px;
+    overflow-y: auto;
+    z-index: 10;
+    display: none;
+  }
+  .autocomplete-list.open { display: block; }
+  .autocomplete-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 13px;
+    border-bottom: 1px solid var(--bg);
+  }
+  .autocomplete-item:hover, .autocomplete-item.highlight {
+    background: var(--accent);
+    color: white;
+  }
+  .autocomplete-item .uses {
+    float: right;
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .autocomplete-item:hover .uses { color: rgba(255,255,255,0.7); }
+
+  /* ---- HEADER STATS ---- */
+  .quick-stats {
+    display: flex;
+    gap: 12px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+  .quick-stats b { color: var(--ink); font-weight: 700; }
+
+  /* ---- TABLE TAB ---- */
+  .table-wrap {
+    background: var(--paper);
+    border: 1.5px solid var(--ink);
+    overflow-x: auto;
+  }
+  table.items {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    min-width: 700px;
+  }
+  table.items thead {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  table.items th {
+    padding: 8px 10px;
+    text-align: left;
+    font-family: 'Archivo', sans-serif;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  table.items tbody tr {
+    border-bottom: 1px solid rgba(22,22,22,0.1);
+  }
+  table.items tbody tr:nth-child(even) { background: var(--row-alt); }
+  table.items td {
+    padding: 8px 10px;
+    vertical-align: middle;
+  }
+  table.items input, table.items select {
+    width: 100%;
+    border: 1px solid transparent;
+    background: transparent;
+    padding: 4px 6px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  table.items input:focus, table.items select:focus {
+    background: white;
+    border-color: var(--accent);
+    outline: none;
+  }
+  table.items td.id-cell {
+    font-weight: 400;
+    color: var(--muted);
+    font-size: 10px;
+    opacity: 0.6;
+    white-space: nowrap;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ---- MODAL OVERLAY ---- */
+  .modal-bg {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 16px;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    max-width: 500px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 20px;
+  }
+  .modal h2 {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 900;
+    font-size: 18px;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    margin-bottom: 12px;
+  }
+  .modal .close-x {
+    float: right;
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    padding: 0;
+    font-size: 20px;
+    cursor: pointer;
+  }
+
+  /* ---- TOAST ---- */
+  #toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ink);
+    color: var(--paper);
+    padding: 12px 20px;
+    font-size: 13px;
+    border: 1px solid var(--ink);
+    z-index: 200;
+    display: none;
+    max-width: 90%;
+  }
+  #toast.show { display: block; }
+  #toast.green { background: var(--green); }
+  #toast.red { background: var(--accent); }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header>
+    <h1><a href="/">GRIDFINITY <span class="accent">//</span> INVENTORY</a></h1>
+    <a href="/" class="home-link">← Home</a>
+  </header>
+
+  <!-- TABS -->
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-tab="scan">⛬ Scan</button>
+    <button class="tab" data-tab="bins">Bins</button>
+    <button class="tab" data-tab="unassigned">Unassigned <span id="unassignedBadge" class="tab-badge"></span></button>
+  </div>
+
+  <!-- SCAN TAB -->
+  <div class="tab-content" id="tab-scan">
+    <!-- Top search bar -->
+    <div class="search-bar">
+      <input type="text" id="topSearch" placeholder="🔍  Search containers…" autocomplete="off">
+      <div class="autocomplete-list" id="topSearchResults"></div>
+    </div>
+
+    <div class="scan-card" id="scanCard">
+      <div class="scan-frame" id="scanFrame">
+        <video id="scanVideo" autoplay playsinline muted></video>
+        <canvas id="scanCanvas"></canvas>
+        <!-- Targeting overlay: dim mask with rounded cutout + corner brackets + progress arc -->
+        <div class="target-overlay" id="targetOverlay">
+          <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+            <!-- Dim mask with rounded rectangular cutout (24..76, 4px radius via curves) -->
+            <path class="mask" d="M0,0 H100 V100 H0 Z
+                                  M28,24
+                                  C26,24 24,26 24,28
+                                  V72
+                                  C24,74 26,76 28,76
+                                  H72
+                                  C74,76 76,74 76,72
+                                  V28
+                                  C76,26 74,24 72,24
+                                  H28 Z"/>
+            <!-- Inner hairline outlining the cutout exactly -->
+            <path class="frame" d="M28,24
+                                   C26,24 24,26 24,28
+                                   V72
+                                   C24,74 26,76 28,76
+                                   H72
+                                   C74,76 76,74 76,72
+                                   V28
+                                   C76,26 74,24 72,24
+                                   H28 Z"/>
+            <!-- Short L-brackets at each corner of the cutout, brand-marked -->
+            <path class="corner" d="M24,32 V28 C24,26 26,24 28,24 H32"/>
+            <path class="corner" d="M68,24 H72 C74,24 76,26 76,28 V32"/>
+            <path class="corner" d="M76,68 V72 C76,74 74,76 72,76 H68"/>
+            <path class="corner" d="M32,76 H28 C26,76 24,74 24,72 V68"/>
+            <!-- Progress arc: traces the cutout perimeter clockwise from top-center.
+                 Path length is the perimeter of the rounded rect ≈ 200. -->
+            <path class="progress" id="dwellProgress"
+                  d="M50,24
+                     H72
+                     C74,24 76,26 76,28
+                     V72
+                     C76,74 74,76 72,76
+                     H28
+                     C26,76 24,74 24,72
+                     V28
+                     C24,26 26,24 28,24
+                     H50"
+                  stroke-dasharray="200" stroke-dashoffset="200"/>
+          </svg>
+        </div>
+        <div class="scan-flash" id="scanFlash"></div>
+        <!-- Flashlight toggle (only shown on devices that support torch) -->
+        <button class="cam-btn" id="flashToggleBtn" style="display:none;" onclick="toggleFlash()" title="Toggle flashlight">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M7 2v6l5 14 5-14V2H7zm2 2h6v3H9V4zm0 5h6v.5L12 18.5 9 9.5V9z"/></svg>
+        </button>
+      </div>
+      <div class="scan-status" id="scanStatus">Initializing camera…</div>
+      <div class="scan-controls" style="margin-top:8px;">
+        <button id="manualEntryBtn" class="secondary">⌨ Type ID manually</button>
+      </div>
+    </div>
+    <div id="scanResult"></div>
+  </div>
+
+  <!-- CONTAINERS TAB -->
+  <!-- BINS TAB -->
+  <div class="tab-content hidden" id="tab-bins">
+    <div class="panel">
+      <h2>Bins <span style="color:var(--muted);font-weight:500;font-size:10px;float:right;" id="binCount">0</span></h2>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <input type="text" id="binSearch" placeholder="Search bins or their contents…" style="flex:1;">
+        <button onclick="openAddBinModal()" class="green" style="flex:0;white-space:nowrap;">+ Add Bin</button>
+      </div>
+      <div class="item-list" id="binList"></div>
+    </div>
+  </div>
+
+  <!-- UNASSIGNED TAB -->
+  <div class="tab-content hidden" id="tab-unassigned">
+    <div class="panel">
+      <h2>Unassigned Containers <span style="color:var(--muted);font-weight:500;font-size:10px;float:right;" id="unassignedCount">0</span></h2>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">
+        Containers without a bin. Tap one to file it.
+      </div>
+      <input type="text" id="unassignedSearch" placeholder="Search unassigned…" style="margin-bottom:10px;">
+      <div class="item-list" id="unassignedList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ITEM EDIT MODAL -->
+<div class="modal-bg" id="editModal">
+  <div class="modal">
+    <button class="close-x" onclick="closeEditModal()">×</button>
+    <h2 id="editTitle">Edit Item</h2>
+    <div id="editBody"></div>
+  </div>
+</div>
+
+<!-- BIN-SCAN-FOR-CONTAINER MODAL -->
+<div class="modal-bg" id="binScanModal">
+  <div class="modal">
+    <button class="close-x" onclick="closeBinScanModal()">×</button>
+    <h2 id="binScanTitle">Where does it go?</h2>
+    <div id="binScanSubtitle" style="font-size:12px;color:var(--muted);margin-bottom:12px;">
+      Scan a bin's QR code, or type the bin ID.
+    </div>
+    <div class="scan-frame" style="aspect-ratio: 4/3;">
+      <video id="binScanVideo" autoplay playsinline muted></video>
+      <canvas id="binScanCanvas" style="display:none;"></canvas>
+      <div class="target-overlay" id="binTargetOverlay">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+          <path class="mask" d="M0,0 H100 V100 H0 Z
+                                M28,24
+                                C26,24 24,26 24,28
+                                V72
+                                C24,74 26,76 28,76
+                                H72
+                                C74,76 76,74 76,72
+                                V28
+                                C76,26 74,24 72,24
+                                H28 Z"/>
+          <path class="frame" d="M28,24
+                                 C26,24 24,26 24,28
+                                 V72
+                                 C24,74 26,76 28,76
+                                 H72
+                                 C74,76 76,74 76,72
+                                 V28
+                                 C76,26 74,24 72,24
+                                 H28 Z"/>
+          <path class="corner" d="M24,32 V28 C24,26 26,24 28,24 H32"/>
+          <path class="corner" d="M68,24 H72 C74,24 76,26 76,28 V32"/>
+          <path class="corner" d="M76,68 V72 C76,74 74,76 72,76 H68"/>
+          <path class="corner" d="M32,76 H28 C26,76 24,74 24,72 V68"/>
+          <path class="progress" id="binDwellProgress"
+                d="M50,24
+                   H72
+                   C74,24 76,26 76,28
+                   V72
+                   C76,74 74,76 72,76
+                   H28
+                   C26,76 24,74 24,72
+                   V28
+                   C24,26 26,24 28,24
+                   H50"
+                stroke-dasharray="200" stroke-dashoffset="200"/>
+        </svg>
+      </div>
+    </div>
+    <div class="scan-status" id="binScanStatus" style="margin-top: 10px;">Looking for a bin QR…</div>
+    <div class="field" style="margin-top: 12px;">
+      <label>Or type bin ID</label>
+      <input type="text" id="binIdManualInput" placeholder="e.g. JN6EE" maxlength="5" style="text-transform:uppercase;">
+    </div>
+    <div class="btn-row">
+      <button onclick="confirmBinIdManual()">Use This Bin</button>
+      <button class="secondary" onclick="skipBinAssignment()">Skip (file later)</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ============================================================================
+   GRIDFINITY INVENTORY APP
+   ============================================================================ */
+
+const state = {
+  currentTab: 'scan',
+  items: [],
+  locations: [],
+  scanner: null,
+  scanCooldown: 0,           // ignore scans for a moment after a lock-in
+  pendingBinSelection: null, // when a container needs a bin
+  addingBinMode: false,      // when the user tapped + Add Bin (no container context)
+  binCreatedCallback: null,  // chained workflow after saveNewBin
+  // Dwell tracking for the targeting-box scanner:
+  dwellId: null,             // ID of QR currently being "held" in the box
+  dwellStart: 0,             // timestamp when dwell timer started
+  dwellLastSeen: 0,          // last timestamp we saw the target QR in the box
+};
+
+/* ---- UTILITIES ---- */
+function el(id) { return document.getElementById(id); }
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+/* Resolve an item to a human-readable name.
+   Priority: description > lines[0] > location > "(unnamed)"
+   NEVER falls back to the QR ID — IDs are technical detail, not display text. */
+function friendlyName(item) {
+  if (!item) return '(unknown)';
+  if (item.description && item.description.trim()) return item.description.trim();
+  if (Array.isArray(item.lines) && item.lines[0] && item.lines[0].trim()) return item.lines[0].trim();
+  if (item.location && item.location.trim()) return item.location.trim();
+  return '(unnamed)';
+}
+
+/* Look up a bin by ID and return its friendly name. Used everywhere we
+   need to display "what's the bin called" from a container's bin_id. */
+function binFriendlyName(binId) {
+  if (!binId) return null;
+  const bin = state.items.find(i => i.id === binId);
+  return bin ? friendlyName(bin) : null;
+}
+function toast(msg, color) {
+  const t = el('toast');
+  t.className = '';
+  t.textContent = msg;
+  if (color) t.classList.add(color);
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ---- TAB SWITCHING ---- */
+function switchTab(name) {
+  state.currentTab = name;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('hidden', c.id !== 'tab-' + name));
+
+  if (name !== 'scan') {
+    // Leaving scan tab — stop camera but keep result visible in case user comes back
+    stopScanner();
+  } else {
+    // Returning to scan tab — clear any old result and restart camera
+    el('scanResult').innerHTML = '';
+    showScanCard();
+    setTimeout(() => startScanner(), 100);
+  }
+
+  if (name === 'containers' || name === 'bins' || name === 'all') {
+    refreshItems();
+  }
+}
+
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => switchTab(t.dataset.tab));
+});
+
+/* ---- ID NORMALIZATION ----
+   QR payloads can be:
+     - Raw 5-char ID                  → "JN6EE"
+     - Pipe-delimited                 → "JN6EE|Things I love about Katie"
+     - URL with ID in path            → "https://gridfinity.local/i/JN6EE"
+     - JSON                           → {"id":"JN6EE",...}
+     - Just text containing an ID     → any of above
+   We try to extract a 5-char ID from the alphabet 23456789ABCDEFGHJKMNPQRSTUVWXYZ. */
+function normalizeQrPayload(payload) {
+  if (!payload) return null;
+  payload = String(payload).trim();
+
+  // 1. If the entire payload is a 5-char ID, done.
+  let candidate = payload.toUpperCase();
+  if (/^[2-9A-HJ-NP-Z]{5}$/.test(candidate)) return candidate;
+
+  // 2. Pipe-delimited — check the first segment
+  if (payload.includes('|')) {
+    candidate = payload.split('|')[0].trim().toUpperCase();
+    if (/^[2-9A-HJ-NP-Z]{5}$/.test(candidate)) return candidate;
+  }
+
+  // 3. URL — check the last path segment
+  if (payload.startsWith('http')) {
+    try {
+      const u = new URL(payload);
+      const parts = u.pathname.split('/').filter(Boolean);
+      if (parts.length) {
+        candidate = parts[parts.length - 1].toUpperCase();
+        if (/^[2-9A-HJ-NP-Z]{5}$/.test(candidate)) return candidate;
+      }
+    } catch(e){}
+  }
+
+  // 4. JSON
+  if (payload.startsWith('{')) {
+    try {
+      const j = JSON.parse(payload);
+      if (j.id) {
+        candidate = String(j.id).trim().toUpperCase();
+        if (/^[2-9A-HJ-NP-Z]{5}$/.test(candidate)) return candidate;
+      }
+    } catch(e){}
+  }
+
+  // 5. Last resort — find any 5-char ID-shaped substring in the payload
+  const m = payload.toUpperCase().match(/[2-9A-HJ-NP-Z]{5}/);
+  if (m) return m[0];
+
+  return null;
+}
+
+/* Extract the human-readable label text from a QR payload, if present.
+   Mirrors Label Forge's encoding modes:
+   - "JN6EE|12v 300RPM"   → "12v 300RPM"
+   - {"id":"JN6EE","l":["12v 300RPM",...]} → "12v 300RPM"
+   - Plain "JN6EE" or URL → no text encoded, returns ''
+*/
+function extractLabelTextFromQr(payload) {
+  if (!payload) return '';
+  payload = String(payload).trim();
+
+  // Pipe-delimited: ID|text  (combined mode in Label Forge)
+  if (payload.includes('|')) {
+    const parts = payload.split('|');
+    // Skip the first segment (ID), join the rest in case the text itself had pipes
+    const text = parts.slice(1).join('|').trim();
+    if (text) return text;
+  }
+
+  // JSON mode in Label Forge: {s:..., id:..., l:[line1, line2, line3]}
+  if (payload.startsWith('{')) {
+    try {
+      const j = JSON.parse(payload);
+      if (Array.isArray(j.l) && j.l[0]) return String(j.l[0]).trim();
+    } catch(e){}
+  }
+
+  return '';
+}
+
+/* ---- CAMERA QR SCANNING ---- */
+/* Toggle the camera flashlight (torch). Works on Android Chrome; iOS Safari
+   does not expose torch via the MediaTrack API. */
+async function toggleFlash() {
+  if (!state.scanner || !state.scanner.track) return;
+  const track = state.scanner.track;
+  const btn = el('flashToggleBtn');
+  try {
+    const newState = !state.scanner.torchOn;
+    await track.applyConstraints({ advanced: [{ torch: newState }] });
+    state.scanner.torchOn = newState;
+    if (btn) btn.classList.toggle('on', newState);
+  } catch(e) {
+    console.warn('[flash] toggle failed:', e);
+    toast('Flash not supported', 'red');
+    if (btn) btn.style.display = 'none';
+  }
+}
+
+async function startScanner() {
+  if (state.scanner) return;
+  const video = el('scanVideo');
+  const canvas = el('scanCanvas');
+  const status = el('scanStatus');
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    status.textContent = 'Camera not supported in this browser';
+    return;
+  }
+
+  status.textContent = 'Requesting camera…';
+  try {
+    // Request continuous autofocus and high resolution so jsQR has
+    // sharp frames to decode. focusMode/focusDistance are non-standard
+    // but widely supported on Android Chrome and iOS Safari.
+    const constraints = {
+      video: {
+        facingMode: { ideal: 'environment' },
+        width:  { ideal: 1920 },
+        height: { ideal: 1080 },
+        focusMode: 'continuous',
+        advanced: [
+          { focusMode: 'continuous' },
+          { focusMode: 'auto' },
+        ],
+      },
+      audio: false,
+    };
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = stream;
+    await video.play();
+
+    // After the stream is live, try to apply focus settings via
+    // applyConstraints (some devices need this as a second step)
+    const track = stream.getVideoTracks()[0];
+    if (track && track.applyConstraints) {
+      try {
+        const caps = track.getCapabilities ? track.getCapabilities() : {};
+        const tweaks = {};
+        if (caps.focusMode && caps.focusMode.includes('continuous')) {
+          tweaks.focusMode = 'continuous';
+        }
+        if (Object.keys(tweaks).length) {
+          await track.applyConstraints({ advanced: [tweaks] });
+        }
+        console.log('[camera] capabilities:', caps);
+        console.log('[camera] settings:', track.getSettings ? track.getSettings() : {});
+      } catch (e) {
+        console.warn('[camera] applyConstraints failed:', e);
+      }
+    }
+
+    status.textContent = 'Point camera at a QR code (tap to focus)';
+    state.scanner = { stream, video, canvas, active: true, track };
+
+    // Check if the camera supports torch (flashlight) - usually Android only.
+    // Show the flash button if it does, hide it otherwise.
+    const flashBtn = el('flashToggleBtn');
+    if (flashBtn) {
+      const caps = track && track.getCapabilities ? track.getCapabilities() : {};
+      if (caps.torch) {
+        flashBtn.style.display = '';
+        flashBtn.classList.remove('on');
+        state.scanner.torchOn = false;
+      } else {
+        flashBtn.style.display = 'none';
+      }
+    }
+
+    // Tap-to-focus: when user taps the video, request a single-shot
+    // focus pulse on that point if the device supports it.
+    video.onclick = async () => {
+      if (!track || !track.applyConstraints) return;
+      try {
+        // Some devices support 'single-shot' focus mode
+        await track.applyConstraints({ advanced: [{ focusMode: 'single-shot' }] });
+        setTimeout(() => {
+          track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(()=>{});
+        }, 400);
+      } catch(e) {}
+    };
+
+    requestAnimationFrame(scanFrame);
+  } catch(e) {
+    status.textContent = 'Camera permission denied: ' + e.message;
+    console.error(e);
+  }
+}
+
+function stopScanner() {
+  if (!state.scanner) return;
+  state.scanner.active = false;
+  // Try to turn flash off before tearing down the track
+  if (state.scanner.track && state.scanner.torchOn) {
+    try { state.scanner.track.applyConstraints({ advanced: [{ torch: false }] }); } catch(e) {}
+  }
+  if (state.scanner.stream) {
+    state.scanner.stream.getTracks().forEach(t => t.stop());
+  }
+  state.scanner = null;
+  state.dwellId = null;
+  state.dwellStart = 0;
+  state.dwellLastSeen = 0;
+  const btn = el('flashToggleBtn');
+  if (btn) {
+    btn.classList.remove('on');
+    btn.style.display = 'none';
+  }
+  setDwellVisual('targetOverlay', 'dwellProgress', 0, 'idle');
+  el('scanStatus').textContent = '';
+}
+
+/* ============================================================================
+   TARGETING BOX + DWELL-TIME SCANNER
+   ============================================================================
+   - QRs detected OUTSIDE the center targeting box are ignored.
+   - QR detected INSIDE the box: start an 800ms dwell timer for that ID.
+   - If two or more QRs in the box: clear the dwell (ambiguous), wait.
+   - If the QR stays in the box for the full dwell: auto-select.
+   - If the QR leaves the box: reset the dwell timer.
+   The targeting box occupies the middle 44% of the video (28% margin all sides).
+   Status text and a progress arc give live feedback. */
+
+const DWELL_MS = 500;           // ms a QR must be in the box to auto-lock
+const DWELL_GRACE_MS = 280;     // how long the dwell can survive without a fresh detection
+const TARGET_BOX_INSET = 0.24;  // 24% margin → 52% center box
+
+/* Returns true if a QR's center is inside the targeting box (in video coords) */
+function qrInTargetBox(code, videoW, videoH) {
+  const loc = code.location;
+  const cx = (loc.topLeftCorner.x + loc.bottomRightCorner.x) / 2;
+  const cy = (loc.topLeftCorner.y + loc.bottomRightCorner.y) / 2;
+  // The visible video uses object-fit:cover. To match the targeting box's
+  // visual position (which lives in the displayed rectangle), we need to
+  // figure out which part of the raw video is actually visible.
+  // The .scan-frame is square; the video keeps its aspect ratio and crops
+  // either top/bottom or left/right. To check "is the QR in the visible
+  // center box", we use the *smaller* dimension of the video as the
+  // reference size for both axes — that's the cropped region.
+  const minDim = Math.min(videoW, videoH);
+  const cropX = (videoW - minDim) / 2;
+  const cropY = (videoH - minDim) / 2;
+  // Translate QR center into the visible square's local coords (0..minDim)
+  const relX = cx - cropX;
+  const relY = cy - cropY;
+  // QR center must lie within the inset box
+  const lo = minDim * TARGET_BOX_INSET;
+  const hi = minDim * (1 - TARGET_BOX_INSET);
+  return relX >= lo && relX <= hi && relY >= lo && relY <= hi;
+}
+
+/* Detect all QRs in the frame (multi-detect with mask painting between passes) */
+function detectAllQrs(imageData, maxAttempts = 6) {
+  const found = [];
+  const data = imageData.data;
+  const width = imageData.width;
+  const height = imageData.height;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const code = jsQR(data, width, height, { inversionAttempts: 'attemptBoth' });
+    if (!code) break;
+    found.push(code);
+    const loc = code.location;
+    const xs = [loc.topLeftCorner.x, loc.topRightCorner.x, loc.bottomLeftCorner.x, loc.bottomRightCorner.x];
+    const ys = [loc.topLeftCorner.y, loc.topRightCorner.y, loc.bottomLeftCorner.y, loc.bottomRightCorner.y];
+    const pad = 8;
+    const x0 = Math.max(0, Math.floor(Math.min(...xs)) - pad);
+    const x1 = Math.min(width, Math.ceil(Math.max(...xs)) + pad);
+    const y0 = Math.max(0, Math.floor(Math.min(...ys)) - pad);
+    const y1 = Math.min(height, Math.ceil(Math.max(...ys)) + pad);
+    for (let y = y0; y < y1; y++) {
+      let i = (y * width + x0) * 4;
+      for (let x = x0; x < x1; x++) {
+        data[i] = 255; data[i+1] = 255; data[i+2] = 255; data[i+3] = 255;
+        i += 4;
+      }
+    }
+  }
+  return found;
+}
+
+/* Update the dwell progress arc (0..1) and overlay state class */
+function setDwellVisual(overlayId, progressId, progress, mode) {
+  const overlay = document.getElementById(overlayId);
+  const arc = document.getElementById(progressId);
+  if (!overlay || !arc) return;
+  // Arc total length = ~200 (perimeter of the rounded 48×52 cutout in viewBox units)
+  const total = 200;
+  arc.setAttribute('stroke-dashoffset', String(total * (1 - progress)));
+  overlay.classList.remove('locking', 'locked');
+  if (mode === 'locking') overlay.classList.add('locking');
+  else if (mode === 'locked') overlay.classList.add('locked');
+}
+
+/* Main scan loop — single QR in target box with dwell time triggers auto-select */
+function scanFrame() {
+  const s = state.scanner;
+  if (!s || !s.active) return;
+  const v = s.video;
+  if (v.readyState !== v.HAVE_ENOUGH_DATA) {
+    requestAnimationFrame(scanFrame);
+    return;
+  }
+  if (typeof jsQR === 'undefined') {
+    el('scanStatus').textContent = '⚠ jsQR failed to load';
+    return;
+  }
+
+  const canvas = s.canvas;
+  canvas.width = v.videoWidth;
+  canvas.height = v.videoHeight;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+
+  let imageData;
+  try {
+    imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  } catch(e) {
+    el('scanStatus').textContent = '⚠ ' + e.message;
+    return;
+  }
+
+  const codes = detectAllQrs(imageData, 6);
+  // Filter to ones inside the targeting box, dedupe by normalized ID
+  const inBox = [];
+  const seen = new Set();
+  for (const code of codes) {
+    if (!qrInTargetBox(code, canvas.width, canvas.height)) continue;
+    const id = normalizeQrPayload(code.data);
+    if (id && !seen.has(id)) {
+      seen.add(id);
+      inBox.push({ id, code });
+    }
+  }
+
+  const now = Date.now();
+  const cooldown = state.scanCooldown > now;
+
+  if (cooldown) {
+    el('scanStatus').textContent = '✓ Locked';
+  } else if (inBox.length > 1) {
+    // Ambiguous — multiple in the box. Don't pick one. Reset immediately.
+    state.dwellId = null;
+    state.dwellStart = 0;
+    state.dwellLastSeen = 0;
+    setDwellVisual('targetOverlay', 'dwellProgress', 0, 'idle');
+    el('scanStatus').textContent = `${inBox.length} QRs in the box — isolate one`;
+  } else if (inBox.length === 1) {
+    // Exactly one QR in the box. Start or continue the dwell.
+    const target = inBox[0];
+    if (state.dwellId !== target.id) {
+      state.dwellId = target.id;
+      state.dwellStart = now;
+    }
+    state.dwellLastSeen = now;
+    const elapsed = now - state.dwellStart;
+    const progress = Math.min(1, elapsed / DWELL_MS);
+    if (progress >= 1) {
+      state.scanCooldown = now + 1500;
+      state.dwellId = null;
+      state.dwellStart = 0;
+      state.dwellLastSeen = 0;
+      setDwellVisual('targetOverlay', 'dwellProgress', 1, 'locked');
+      // Pass the raw payload too — the label-text-extraction helper can pull
+      // the description from it for pre-filling the new-container form,
+      // even when the registry record was deleted.
+      handleScanLocked(target.id, target.code.data);
+    } else {
+      setDwellVisual('targetOverlay', 'dwellProgress', progress, 'locking');
+      el('scanStatus').textContent = 'Hold steady…';
+    }
+  } else {
+    // No QR detected in the box this frame.
+    // If we were in the middle of a dwell, allow a brief grace window —
+    // camera autofocus / blur / hand jiggle can drop frames intermittently.
+    if (state.dwellId && (now - state.dwellLastSeen) < DWELL_GRACE_MS) {
+      // Continue the dwell at its previous progress (no decay).
+      const elapsed = state.dwellLastSeen - state.dwellStart;
+      const progress = Math.min(1, elapsed / DWELL_MS);
+      setDwellVisual('targetOverlay', 'dwellProgress', progress, 'locking');
+      el('scanStatus').textContent = 'Hold steady…';
+    } else {
+      state.dwellId = null;
+      state.dwellStart = 0;
+      state.dwellLastSeen = 0;
+      setDwellVisual('targetOverlay', 'dwellProgress', 0, 'idle');
+      el('scanStatus').textContent = codes.length > 0
+        ? `${codes.length} QR${codes.length === 1 ? '' : 's'} visible — move into the box`
+        : 'Point a QR at the box…';
+    }
+  }
+
+  if (s.active) requestAnimationFrame(scanFrame);
+}
+
+/* Called when a QR has been held long enough to lock in.
+   `rawPayload` is the original QR data string (e.g. "M73NQ|12v 300RPM").
+   It's used to recover the label's line text even if the registry record
+   was deleted — encoded right in the QR itself. */
+function handleScanLocked(id, rawPayload) {
+  navigator.vibrate?.(80);
+  const flash = el('scanFlash');
+  if (flash) {
+    flash.classList.remove('flash');
+    void flash.offsetWidth;
+    flash.classList.add('flash');
+  }
+  // Reset visual after a beat
+  setTimeout(() => setDwellVisual('targetOverlay', 'dwellProgress', 0, 'idle'), 300);
+
+  if (state.pendingBinSelection) {
+    confirmBinFromScan(id);
+    return;
+  }
+  showItemDetail(id, rawPayload);
+}
+
+/* ---- MANUAL ID ENTRY ---- */
+el('manualEntryBtn').addEventListener('click', () => {
+  const id = prompt('Enter the 5-character ID:');
+  if (!id) return;
+  const normalized = normalizeQrPayload(id.trim());
+  if (!normalized) {
+    toast('Invalid ID format', 'red');
+    return;
+  }
+  handleScanLocked(normalized);
+});
+
+/* ---- ITEM LOOKUP & DETAIL ---- */
+async function showItemDetail(id, rawPayload) {
+  // Detail card lives in the Scan tab. If the user is on a different tab
+  // (Bins, Unassigned), switch them to Scan so they see the result.
+  if (state.currentTab !== 'scan') {
+    switchTab('scan');
+  }
+  // Stop scanner and hide its UI so we can show the detail
+  stopScanner();
+  hideScanCard();
+
+  // Pull label text from the raw QR payload if we have it. This works even
+  // when the registry record was deleted — the QR itself encodes the text.
+  const qrText = extractLabelTextFromQr(rawPayload);
+
+  let resp;
+  try {
+    resp = await fetch(`/api/items/${id}`);
+  } catch(e) {
+    toast('Network error', 'red');
+    showScanCard();
+    startScanner();
+    return;
+  }
+  const data = await resp.json();
+
+  if (!data.exists) {
+    // Brand new (or previously deleted) — fall back to text extracted from the QR
+    showNewItemForm(id, false, qrText);
+    return;
+  }
+
+  // Existing but never categorized (type missing or unknown)?
+  // Treat as new so the user can pick Container or Bin.
+  // Prefer the registry's stored lines[0]; fall back to QR text.
+  const rec = data.record;
+  const t = rec.type;
+  if (t !== 'container' && t !== 'bin') {
+    const fromRegistry = (Array.isArray(rec.lines) && rec.lines[0]) ? rec.lines[0] : '';
+    const line1 = fromRegistry || qrText;
+    showNewItemForm(id, true, line1);
+    return;
+  }
+
+  // Existing categorized item — show detail card
+  renderItemDetail(rec);
+}
+
+function renderItemDetail(rec) {
+  const result = el('scanResult');
+  const type = rec.type || 'unknown';
+  const typeBadge = type === 'bin' ? 'bin' :
+                    type === 'container' ? 'container' : '';
+  const typeLabel = type === 'bin' ? 'BIN' :
+                    type === 'container' ? 'CONTAINER' : 'NOT YET CATEGORIZED';
+
+  // Use friendlyName which falls through: description > lines[0] > location > "(unnamed)"
+  // This way bins printed via Label Forge (which set lines[0]) get a proper display name
+  // even if their location field is empty.
+  const primaryText = friendlyName(rec);
+
+  let html = `
+    <div class="detail-card">
+      <div class="detail-desc">${escapeHtml(primaryText)}</div>
+      <div class="detail-type ${typeBadge}">${typeLabel}</div>
+      <div class="detail-id" style="margin-top:8px;">ID: ${rec.id}</div>
+  `;
+
+  if (type === 'bin') {
+    const locPath = formatLocationPath(rec);
+    if (locPath) {
+      html += `<div class="detail-field"><span class="k">Location</span> ${escapeHtml(locPath)}</div>`;
+    }
+    if (rec.contents && rec.contents.length) {
+      html += `<div class="detail-field"><span class="k">Contents</span> ${rec.contents.length} container${rec.contents.length === 1 ? '' : 's'}</div>`;
+      html += `<div class="item-list" style="margin-top:8px;">`;
+      rec.contents.forEach(c => {
+        html += `
+          <div class="item-row" onclick="showItemDetail('${c.id}')">
+            <div class="ititle">${escapeHtml(friendlyName(c))}</div>
+            ${c.quantity ? `<div class="imeta">qty ${c.quantity}</div>` : ''}
+            <div class="iid">${c.id}</div>
+          </div>
+        `;
+      });
+      html += `</div>`;
+    } else {
+      html += `<div class="detail-field" style="color:var(--muted);font-style:italic;margin-top:12px;">Empty bin</div>`;
+    }
+  } else if (type === 'container') {
+    if (rec.bin_id) {
+      // Get the bin's friendly name. Prefer fresh state.items lookup;
+      // fall back to fields the backend embedded in this response.
+      let binName = binFriendlyName(rec.bin_id);
+      if (!binName) {
+        if (rec.bin_description && rec.bin_description.trim()) {
+          binName = rec.bin_description.trim();
+        } else if (Array.isArray(rec.bin_lines) && rec.bin_lines[0] && rec.bin_lines[0].trim()) {
+          binName = rec.bin_lines[0].trim();
+        } else {
+          binName = '(unnamed bin)';
+        }
+      }
+      // Build the location path from embedded hierarchical fields
+      const locParts = [
+        rec.bin_location_property,
+        rec.bin_location_room,
+        rec.bin_location_spot,
+      ].filter(p => p && p.trim());
+      const locPath = locParts.length ? locParts.join(' · ') : (rec.bin_location || '');
+
+      // Bin: name only (tappable to open that bin's detail page)
+      html += `<div class="detail-field"><span class="k">Bin</span>
+        <span style="color:var(--accent);font-weight:700;cursor:pointer;" onclick="showItemDetail('${rec.bin_id}')">${escapeHtml(binName)}</span>
+      </div>`;
+      // Location: separate labeled row underneath
+      if (locPath) {
+        html += `<div class="detail-field"><span class="k">Location</span> ${escapeHtml(locPath)}</div>`;
+      }
+    } else {
+      html += `<div class="detail-field" style="color:var(--accent);"><span class="k">Bin</span> Not assigned</div>`;
+    }
+    if (rec.quantity != null) html += `<div class="detail-field"><span class="k">Quantity</span> ${rec.quantity}</div>`;
+    if (rec.category) html += `<div class="detail-field"><span class="k">Category</span> ${escapeHtml(rec.category)}</div>`;
+    if (rec.notes) html += `<div class="detail-field"><span class="k">Notes</span> ${escapeHtml(rec.notes)}</div>`;
+  }
+
+  html += `
+    <div class="btn-row" style="margin-top: 16px;">
+      <button onclick="openEditModal('${rec.id}')">✎ Edit Details</button>
+      ${type === 'unknown' ? `<button class="secondary" onclick="makeBin('${rec.id}')">Mark as Bin</button>` : ''}
+    </div>
+    <div class="btn-row" style="margin-top: 8px;">
+      <button class="secondary" onclick="dismissDetail()">Scan another</button>
+    </div>
+    </div>
+  `;
+  result.innerHTML = html;
+}
+
+function hideScanCard() {
+  const card = el('scanCard');
+  if (card) card.style.display = 'none';
+}
+
+function showScanCard() {
+  const card = el('scanCard');
+  if (card) card.style.display = '';
+}
+
+function dismissDetail() {
+  el('scanResult').innerHTML = '';
+  showScanCard();
+  startScanner();
+}
+
+/* ---- NEW ITEM (UNKNOWN ID SCANNED) ---- */
+function showNewItemForm(id, alreadyExists, lineText) {
+  const result = el('scanResult');
+  const headline = alreadyExists ? 'Choose a type' : 'New label';
+  const tag = alreadyExists ? 'UNCATEGORIZED · CHOOSE BELOW' : 'NEW · NOT IN REGISTRY';
+  // Existing records can be deleted from here (clear out stuck scans)
+  const deleteBtn = alreadyExists
+    ? `<button class="secondary" style="margin-top:14px;width:100%;color:#d33;border-color:#d33;" onclick="deleteUncategorized('${id}')">🗑 Delete this record</button>`
+    : '';
+  // Encode line text safely so we can pass it through inline onclick handlers
+  const encodedLine = encodeURIComponent(lineText || '');
+  // If we have line text from the label, show it as a hint above the buttons
+  const labelHint = lineText
+    ? `<div style="font-size:12px;color:var(--muted);margin-top:10px;">Label text: <strong style="color:var(--ink);">${escapeHtml(lineText)}</strong></div>`
+    : '';
+  result.innerHTML = `
+    <div class="detail-card">
+      <div class="detail-desc">${headline}</div>
+      <div class="detail-type">${tag}</div>
+      ${labelHint}
+
+      <div class="field" style="margin-top: 14px;">
+        <label>What is this?</label>
+        <div class="btn-row">
+          <button id="newAsContainer" class="green" onclick="newAsContainer('${id}', '${encodedLine}')">📦 Container</button>
+          <button id="newAsBin" class="secondary" onclick="newAsBin('${id}', '${encodedLine}')">⊞ Bin</button>
+        </div>
+      </div>
+      ${deleteBtn}
+      <div class="detail-id" style="margin-top:12px;">ID: ${id}</div>
+    </div>
+  `;
+}
+
+async function deleteUncategorized(id) {
+  if (!confirm(`Delete record ${id}? This will remove it from the registry. The QR label itself isn't affected — you can rescan to register again.`)) return;
+  try {
+    const r = await fetch(`/api/items/${id}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error('Delete failed');
+    toast('Deleted', 'green');
+    await refreshItems();
+    dismissDetail();
+  } catch(e) {
+    toast('Error deleting: ' + e.message, 'red');
+  }
+}
+
+function newAsContainer(id, encodedLine) {
+  const lineText = encodedLine ? decodeURIComponent(encodedLine) : '';
+  const result = el('scanResult');
+  result.innerHTML = `
+    <div class="detail-card">
+      <div class="detail-desc">New container</div>
+      <div class="detail-type container">NEW CONTAINER</div>
+
+      <div class="field" style="margin-top: 14px;">
+        <label>Description *</label>
+        <input type="text" id="newContainerDesc" placeholder="e.g. M3 × 8mm screws" value="${escapeHtml(lineText)}" autofocus>
+        ${lineText ? `<div style="font-size:11px;color:var(--muted);margin-top:4px;">Filled from label — edit if needed</div>` : ''}
+      </div>
+
+      <div class="field">
+        <label>Quantity (optional)</label>
+        <input type="number" id="newContainerQty" min="0" placeholder="—">
+      </div>
+
+      <div class="btn-row" style="margin-top: 12px;">
+        <button class="green" onclick="saveNewContainer('${id}')">Continue: Pick Bin →</button>
+        <button class="secondary" onclick="dismissDetail()">Cancel</button>
+      </div>
+      <div class="detail-id" style="margin-top:12px;">ID: ${id}</div>
+    </div>
+  `;
+  const descInput = el('newContainerDesc');
+  descInput.focus();
+  // Select all so user can immediately type to replace, or just tap Continue to keep
+  if (lineText) descInput.select();
+}
+
+async function saveNewContainer(id) {
+  const desc = el('newContainerDesc').value.trim();
+  if (!desc) {
+    toast('Description required', 'red');
+    return;
+  }
+  const qty = parseInt(el('newContainerQty').value);
+  const record = {
+    type: 'container',
+    description: desc,
+  };
+  if (!isNaN(qty)) record.quantity = qty;
+
+  // Save initial container, then open bin selection
+  await saveItem(id, record);
+  state.pendingBinSelection = id;
+  openBinScanModal();
+}
+
+function newAsBin(id, encodedLine) {
+  const lineText = encodedLine ? decodeURIComponent(encodedLine) : '';
+  const result = el('scanResult');
+  result.innerHTML = `
+    <div class="detail-card">
+      <div class="detail-desc">New bin</div>
+      <div class="detail-type bin">NEW BIN</div>
+
+      <div class="field" style="margin-top: 14px;">
+        <label>Bin Name *</label>
+        <input type="text" id="newBinName" placeholder="e.g. Box 1" value="${escapeHtml(lineText)}" autocomplete="off">
+        ${lineText ? `<div style="font-size:11px;color:var(--muted);margin-top:4px;">Filled from label — edit if needed</div>` : ''}
+      </div>
+      <div class="field">
+        <label>Property *</label>
+        <div class="autocomplete">
+          <input type="text" id="newBinProperty" placeholder="e.g. Home" autocomplete="off">
+          <div class="autocomplete-list" id="newBinPropertyAuto"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Room *</label>
+        <div class="autocomplete">
+          <input type="text" id="newBinRoom" placeholder="e.g. Garage" autocomplete="off">
+          <div class="autocomplete-list" id="newBinRoomAuto"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Spot (optional)</label>
+        <div class="autocomplete">
+          <input type="text" id="newBinSpot" placeholder="e.g. Shelf 2, Drawer A" autocomplete="off">
+          <div class="autocomplete-list" id="newBinSpotAuto"></div>
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-top: 12px;">
+        <button class="green" onclick="saveNewBin('${id}')">Save Bin</button>
+        <button class="secondary" onclick="dismissDetail()">Cancel</button>
+      </div>
+      <div class="detail-id" style="margin-top:12px;">ID: ${id}</div>
+    </div>
+  `;
+  // Focus the first empty field. If name is pre-filled, skip to Property.
+  const nameInput = el('newBinName');
+  if (lineText) {
+    el('newBinProperty').focus();
+    nameInput.select();
+  } else {
+    nameInput.focus();
+  }
+  setupLocationAutocomplete('newBinProperty', 'newBinPropertyAuto', 'properties');
+  setupLocationAutocomplete('newBinRoom', 'newBinRoomAuto', 'rooms', () => ({ property: el('newBinProperty').value }));
+  setupLocationAutocomplete('newBinSpot', 'newBinSpotAuto', 'spots',
+    () => ({ property: el('newBinProperty').value, room: el('newBinRoom').value }));
+}
+
+async function saveNewBin(id) {
+  const name = el('newBinName').value.trim();
+  const prop = el('newBinProperty').value.trim();
+  const room = el('newBinRoom').value.trim();
+  const spot = el('newBinSpot').value.trim();
+  if (!name) { toast('Bin name required', 'red'); return; }
+  if (!prop) { toast('Property required', 'red'); return; }
+  if (!room) { toast('Room required', 'red'); return; }
+  await saveItem(id, {
+    type: 'bin',
+    // Store the bin's name in both description (for friendlyName) and lines[0]
+    // (so the QR's label text round-trips correctly through Label Forge).
+    description: name,
+    lines: [name],
+    location_property: prop,
+    location_room: room,
+    location_spot: spot || null,
+    location: [prop, room, spot].filter(x => x).join(' · '),
+  });
+  toast('Bin saved', 'green');
+  await refreshItems();
+  // If a callback is pending (e.g. we were creating this bin during
+  // container-to-bin assignment), run it. Otherwise just show the bin's
+  // detail page.
+  if (state.binCreatedCallback) {
+    const cb = state.binCreatedCallback;
+    state.binCreatedCallback = null;
+    await cb(id);
+  } else {
+    showItemDetail(id);
+  }
+}
+
+async function makeBin(id) {
+  const loc = prompt('Location for this bin:');
+  if (!loc) return;
+  await saveItem(id, { type: 'bin', location: loc.trim() });
+  showItemDetail(id);
+}
+
+/* ---- BIN SCAN MODAL (for container → bin assignment) ---- */
+function openBinScanModal() {
+  state.addingBinMode = false;
+  el('binScanModal').classList.add('open');
+  // Restore default text (in case it was set by openAddBinModal earlier)
+  const title = el('binScanTitle');
+  if (title) title.textContent = 'Where does it go?';
+  const subtitle = el('binScanSubtitle');
+  if (subtitle) subtitle.textContent = "Scan a bin's QR code, or type the bin ID.";
+  el('binIdManualInput').value = '';
+  startBinScanner();
+}
+
+function closeBinScanModal() {
+  el('binScanModal').classList.remove('open');
+  stopBinScanner();
+  state.addingBinMode = false;
+}
+
+let binScannerState = null;
+async function startBinScanner() {
+  const video = el('binScanVideo');
+  const canvas = el('binScanCanvas');
+  if (!navigator.mediaDevices) return;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: 'environment' },
+        width:  { ideal: 1920 },
+        height: { ideal: 1080 },
+        focusMode: 'continuous',
+        advanced: [
+          { focusMode: 'continuous' },
+          { focusMode: 'auto' },
+        ],
+      },
+      audio: false,
+    });
+    video.srcObject = stream;
+    await video.play();
+    const track = stream.getVideoTracks()[0];
+    if (track && track.applyConstraints) {
+      try {
+        const caps = track.getCapabilities ? track.getCapabilities() : {};
+        if (caps.focusMode && caps.focusMode.includes('continuous')) {
+          await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+        }
+      } catch (e) {}
+    }
+    binScannerState = { stream, video, canvas, active: true };
+    requestAnimationFrame(scanBinFrame);
+  } catch(e) {
+    el('binScanStatus').textContent = 'Camera unavailable — type the bin ID instead';
+  }
+}
+
+function stopBinScanner() {
+  if (!binScannerState) return;
+  binScannerState.active = false;
+  if (binScannerState.stream) binScannerState.stream.getTracks().forEach(t => t.stop());
+  binScannerState = null;
+  setDwellVisual('binTargetOverlay', 'binDwellProgress', 0, 'idle');
+}
+
+function scanBinFrame() {
+  const s = binScannerState;
+  if (!s || !s.active) return;
+  if (s.video.readyState !== s.video.HAVE_ENOUGH_DATA) {
+    requestAnimationFrame(scanBinFrame);
+    return;
+  }
+
+  s.canvas.width = s.video.videoWidth;
+  s.canvas.height = s.video.videoHeight;
+  const ctx = s.canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(s.video, 0, 0);
+
+  let imageData;
+  try {
+    imageData = ctx.getImageData(0, 0, s.canvas.width, s.canvas.height);
+  } catch(e) {
+    requestAnimationFrame(scanBinFrame);
+    return;
+  }
+
+  const codes = detectAllQrs(imageData, 6);
+  // Filter to ones in the targeting box, dedupe, exclude the source container
+  const inBox = [];
+  const seen = new Set();
+  for (const code of codes) {
+    if (!qrInTargetBox(code, s.canvas.width, s.canvas.height)) continue;
+    const id = normalizeQrPayload(code.data);
+    if (!id || seen.has(id)) continue;
+    if (id === state.pendingBinSelection) continue;  // skip source container
+    seen.add(id);
+    inBox.push({ id, code });
+  }
+
+  const now = Date.now();
+  if (inBox.length > 1) {
+    s.dwellId = null;
+    s.dwellStart = 0;
+    s.dwellLastSeen = 0;
+    setDwellVisual('binTargetOverlay', 'binDwellProgress', 0, 'idle');
+    el('binScanStatus').textContent = `${inBox.length} QRs in box — isolate one`;
+  } else if (inBox.length === 1) {
+    const target = inBox[0];
+    if (s.dwellId !== target.id) {
+      s.dwellId = target.id;
+      s.dwellStart = now;
+    }
+    s.dwellLastSeen = now;
+    const elapsed = now - s.dwellStart;
+    const progress = Math.min(1, elapsed / DWELL_MS);
+    if (progress >= 1) {
+      setDwellVisual('binTargetOverlay', 'binDwellProgress', 1, 'locked');
+      s.dwellId = null;
+      s.dwellStart = 0;
+      s.dwellLastSeen = 0;
+      handleBinScanLocked(target.id, target.code.data);
+      return;
+    }
+    setDwellVisual('binTargetOverlay', 'binDwellProgress', progress, 'locking');
+    el('binScanStatus').textContent = 'Hold steady…';
+  } else {
+    // No QR in box this frame — grace window before reset
+    if (s.dwellId && (now - (s.dwellLastSeen || 0)) < DWELL_GRACE_MS) {
+      const elapsed = s.dwellLastSeen - s.dwellStart;
+      const progress = Math.min(1, elapsed / DWELL_MS);
+      setDwellVisual('binTargetOverlay', 'binDwellProgress', progress, 'locking');
+      el('binScanStatus').textContent = 'Hold steady…';
+    } else {
+      s.dwellId = null;
+      s.dwellStart = 0;
+      s.dwellLastSeen = 0;
+      setDwellVisual('binTargetOverlay', 'binDwellProgress', 0, 'idle');
+      el('binScanStatus').textContent = codes.length > 0
+        ? 'Move the bin QR into the box'
+        : 'Point the bin QR at the box…';
+    }
+  }
+
+  requestAnimationFrame(scanBinFrame);
+}
+
+function handleBinScanLocked(id, rawPayload) {
+  navigator.vibrate?.(80);
+  stopBinScanner();
+  // Two modes:
+  //   1. Adding a bin (user tapped + Add Bin) → handleAddBinScanned
+  //   2. Filing a container (pendingBinSelection set) → confirmBinFromScan
+  if (state.addingBinMode) {
+    handleAddBinScanned(id, rawPayload);
+    return;
+  }
+  confirmBinFromScan(id, rawPayload);
+}
+
+async function confirmBinFromScan(binId, rawPayload) {
+  const containerId = state.pendingBinSelection;
+  if (!containerId) return;
+
+  // Look up the bin
+  let bin = null;
+  try {
+    const r = await fetch(`/api/items/${binId}`);
+    const d = await r.json();
+    if (d.exists) bin = d.record;
+  } catch(e) {}
+
+  if (!bin || bin.type !== 'bin') {
+    // The scanned QR is either fresh OR was a container/unknown.
+    // Show the full new-bin form (hierarchical fields). After the user
+    // saves the bin, we'll auto-resume by filing the pending container.
+    closeBinScanModal();
+    state.binCreatedCallback = async (savedBinId) => {
+      await saveItem(containerId, { bin_id: savedBinId });
+      await refreshItems();
+      toast(`Filed in bin`, 'green');
+      state.pendingBinSelection = null;
+      showItemDetail(containerId);
+    };
+    // Show the new-bin form with the QR label text pre-filled
+    const lineText = extractLabelTextFromQr(rawPayload);
+    newAsBin(binId, encodeURIComponent(lineText));
+    return;
+  }
+
+  // Bin already exists — file the container directly
+  await saveItem(containerId, { bin_id: binId });
+  closeBinScanModal();
+  state.pendingBinSelection = null;
+  toast(`Filed in ${friendlyName(bin)}`, 'green');
+  await refreshItems();
+  showItemDetail(containerId);
+}
+
+function confirmBinIdManual() {
+  const v = el('binIdManualInput').value.trim().toUpperCase();
+  const id = normalizeQrPayload(v);
+  if (!id) { toast('Invalid bin ID', 'red'); return; }
+  if (state.addingBinMode) {
+    handleAddBinScanned(id, '');  // no raw payload via manual entry
+  } else {
+    confirmBinFromScan(id, '');
+  }
+}
+
+function skipBinAssignment() {
+  closeBinScanModal();
+  const containerId = state.pendingBinSelection;
+  state.pendingBinSelection = null;
+  if (containerId) showItemDetail(containerId);
+}
+
+/* ---- AUTOCOMPLETE for bin locations ---- */
+/* ---- LOCATION AUTOCOMPLETE (hierarchical) ----
+   level: 'properties' | 'rooms' | 'spots'
+   parentFn: optional fn returning {property?, room?} to filter results */
+function setupLocationAutocomplete(inputId, listId, level, parentFn) {
+  const input = el(inputId);
+  const list = el(listId);
+  if (!input || !list) return;
+  const render = async () => {
+    const q = input.value.toLowerCase();
+    const parent = parentFn ? parentFn() : {};
+    const params = new URLSearchParams();
+    if (parent.property) params.set('property', parent.property);
+    if (parent.room) params.set('room', parent.room);
+    let suggestions = [];
+    try {
+      const r = await fetch('/api/locations' + (params.toString() ? '?' + params.toString() : ''));
+      const data = await r.json();
+      suggestions = data[level] || [];
+    } catch(e) {}
+    const matches = q
+      ? suggestions.filter(s => s.name.toLowerCase().includes(q))
+      : suggestions;
+    if (!matches.length) { list.classList.remove('open'); return; }
+    list.innerHTML = matches.slice(0, 8).map(m =>
+      `<div class="autocomplete-item" data-val="${escapeHtml(m.name)}">
+        ${escapeHtml(m.name)}<span class="uses">${m.uses}×</span>
+      </div>`
+    ).join('');
+    list.classList.add('open');
+    list.querySelectorAll('.autocomplete-item').forEach(item => {
+      item.addEventListener('mousedown', e => {
+        e.preventDefault();
+        input.value = item.dataset.val;
+        list.classList.remove('open');
+      });
+    });
+  };
+  input.addEventListener('input', render);
+  input.addEventListener('focus', render);
+  input.addEventListener('blur', () => setTimeout(() => list.classList.remove('open'), 200));
+}
+
+/* Legacy wrapper for any remaining callers — uses 'properties' level */
+function setupAutocomplete(inputId, listId) {
+  setupLocationAutocomplete(inputId, listId, 'properties');
+}
+
+/* ---- ITEM SAVE ---- */
+async function saveItem(id, patch) {
+  try {
+    const r = await fetch(`/api/items/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    const data = await r.json();
+    if (!data.ok) {
+      toast('Save failed', 'red');
+      return false;
+    }
+    return data.record;
+  } catch(e) {
+    toast('Network error', 'red');
+    return false;
+  }
+}
+
+/* ---- EDIT MODAL ---- */
+async function openEditModal(id) {
+  const r = await fetch(`/api/items/${id}`);
+  const data = await r.json();
+  const rec = data.record || { id };
+  const type = rec.type || 'container';
+
+  el('editTitle').textContent = `Edit ${id}`;
+  el('editBody').innerHTML = `
+    <div class="field">
+      <label>Type</label>
+      <select id="edType">
+        <option value="container" ${type === 'container' ? 'selected' : ''}>Container</option>
+        <option value="bin" ${type === 'bin' ? 'selected' : ''}>Bin</option>
+      </select>
+    </div>
+    <div class="field" id="edDescField">
+      <label>Description</label>
+      <input type="text" id="edDesc" value="${escapeHtml(rec.description || '')}">
+    </div>
+    <div class="field" id="edLocField">
+      <label>Location (for bins)</label>
+      <div class="autocomplete">
+        <input type="text" id="edLoc" value="${escapeHtml(rec.location || '')}" autocomplete="off">
+        <div class="autocomplete-list" id="edLocAuto"></div>
+      </div>
+    </div>
+    <div class="field" id="edBinField">
+      <label>Bin ID (where this container lives)</label>
+      <input type="text" id="edBinId" value="${escapeHtml(rec.bin_id || '')}" maxlength="5" style="text-transform:uppercase;">
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Quantity</label>
+        <input type="number" id="edQty" value="${rec.quantity ?? ''}" min="0">
+      </div>
+      <div class="field">
+        <label>Category</label>
+        <input type="text" id="edCategory" value="${escapeHtml(rec.category || '')}">
+      </div>
+    </div>
+    <div class="field">
+      <label>Supplier / SKU</label>
+      <div class="row">
+        <input type="text" id="edSupplier" value="${escapeHtml(rec.supplier || '')}" placeholder="Supplier">
+        <input type="text" id="edSku" value="${escapeHtml(rec.supplier_sku || '')}" placeholder="SKU">
+      </div>
+    </div>
+    <div class="field">
+      <label>Notes</label>
+      <textarea id="edNotes">${escapeHtml(rec.notes || '')}</textarea>
+    </div>
+    <div class="btn-row" style="margin-top: 16px;">
+      <button class="green" onclick="saveEdit('${id}')">Save</button>
+      <button class="secondary" onclick="closeEditModal()">Cancel</button>
+    </div>
+    <div class="btn-row" style="margin-top: 8px;">
+      <button class="warn" onclick="deleteItem('${id}')">Delete</button>
+    </div>
+  `;
+  el('editModal').classList.add('open');
+  setupAutocomplete('edLoc', 'edLocAuto');
+  // Show/hide fields based on type
+  const updateVisibility = () => {
+    const t = el('edType').value;
+    el('edLocField').style.display = t === 'bin' ? '' : 'none';
+    el('edBinField').style.display = t === 'container' ? '' : 'none';
+  };
+  el('edType').addEventListener('change', updateVisibility);
+  updateVisibility();
+}
+
+function closeEditModal() {
+  el('editModal').classList.remove('open');
+}
+
+async function saveEdit(id) {
+  const patch = {
+    type: el('edType').value,
+    description: el('edDesc').value.trim(),
+    location: el('edLoc').value.trim() || null,
+    bin_id: (el('edBinId').value.trim().toUpperCase()) || null,
+    quantity: el('edQty').value === '' ? null : parseInt(el('edQty').value),
+    category: el('edCategory').value.trim() || null,
+    supplier: el('edSupplier').value.trim() || null,
+    supplier_sku: el('edSku').value.trim() || null,
+    notes: el('edNotes').value.trim() || null,
+  };
+  const ok = await saveItem(id, patch);
+  if (ok) {
+    toast('Saved', 'green');
+    closeEditModal();
+    await refreshLocations();
+    if (state.currentTab === 'scan') showItemDetail(id);
+    else refreshItems();
+  }
+}
+
+async function deleteItem(id) {
+  if (!confirm(`Delete ${id}? (ID stays reserved.)`)) return;
+  await fetch(`/api/items/${id}`, { method: 'DELETE' });
+  toast('Deleted', 'green');
+  closeEditModal();
+  refreshItems();
+  if (state.currentTab === 'scan') el('scanResult').innerHTML = '';
+}
+
+/* ---- LISTS ---- */
+async function refreshItems() {
+  try {
+    const r = await fetch('/api/items');
+    const data = await r.json();
+    state.items = data.items || [];
+    renderLists();
+  } catch(e) {
+    toast('Failed to load items', 'red');
+  }
+}
+
+async function refreshLocations() {
+  // No-op - hierarchical autocomplete fetches /api/locations on demand
+  // per input. Kept as a stub for call-site compatibility.
+}
+
+function renderLists() {
+  const containers = state.items.filter(i => i.type === 'container');
+  const bins = state.items.filter(i => i.type === 'bin');
+
+  el('binCount').textContent = bins.length;
+
+  const bq = (el('binSearch')?.value || '').toLowerCase();
+
+  // Filter bins by name, location parts, OR contained container names/notes
+  const filteredBins = !bq ? bins : bins.filter(b => {
+    if (friendlyName(b).toLowerCase().includes(bq)) return true;
+    if ((b.location || '').toLowerCase().includes(bq)) return true;
+    if ((b.location_property || '').toLowerCase().includes(bq)) return true;
+    if ((b.location_room || '').toLowerCase().includes(bq)) return true;
+    if ((b.location_spot || '').toLowerCase().includes(bq)) return true;
+    // Match if any container inside the bin contains the query
+    const contents = containers.filter(c => c.bin_id === b.id);
+    return contents.some(c =>
+      friendlyName(c).toLowerCase().includes(bq) ||
+      (c.notes || '').toLowerCase().includes(bq) ||
+      (c.category || '').toLowerCase().includes(bq)
+    );
+  });
+
+  // Render bin list
+  el('binList').innerHTML = filteredBins.length === 0
+    ? `<div class="empty-state">${bq ? 'No bins match.' : 'No bins yet. Scan a bin\'s QR or tap + Add Bin.'}</div>`
+    : filteredBins.map(i => {
+        const ct = containers.filter(c => c.bin_id === i.id).length;
+        const locPath = formatLocationPath(i);
+        return `<div class="item-row" onclick="showItemDetail('${i.id}')">
+          <div class="ititle">
+            ${escapeHtml(friendlyName(i))}
+            ${locPath ? `<div style="font-size:11px;color:var(--muted);font-weight:400;margin-top:2px;">${escapeHtml(locPath)}</div>` : ''}
+          </div>
+          <div class="imeta">${ct} item${ct === 1 ? '' : 's'}</div>
+          <div class="iid">${i.id}</div>
+        </div>`;
+      }).join('');
+
+  // ---- Unassigned containers ----
+  // ONLY proper containers with no bin (or pointing to a missing bin).
+  // Label Forge stubs that haven't been scanned/categorized yet stay out —
+  // otherwise they'd skip the Container/Bin chooser when scanned.
+  const binIds = new Set(bins.map(b => b.id));
+  const unassigned = containers.filter(c => !c.bin_id || !binIds.has(c.bin_id));
+
+  // Tab badge — only show if count > 0
+  const badge = el('unassignedBadge');
+  if (badge) {
+    if (unassigned.length > 0) {
+      badge.textContent = unassigned.length;
+      badge.classList.add('show');
+    } else {
+      badge.classList.remove('show');
+    }
+  }
+  el('unassignedCount').textContent = unassigned.length;
+
+  const uq = (el('unassignedSearch')?.value || '').toLowerCase();
+  const filteredUnassigned = !uq ? unassigned : unassigned.filter(c =>
+    friendlyName(c).toLowerCase().includes(uq) ||
+    (c.notes || '').toLowerCase().includes(uq) ||
+    (c.category || '').toLowerCase().includes(uq) ||
+    c.id.toLowerCase().includes(uq)
+  );
+
+  el('unassignedList').innerHTML = filteredUnassigned.length === 0
+    ? `<div class="empty-state">${unassigned.length === 0 ? 'All containers are filed. 🎉' : 'No matches.'}</div>`
+    : filteredUnassigned.map(c => {
+        const orphaned = c.bin_id && !binIds.has(c.bin_id);
+        const meta = orphaned
+          ? `<span style="color:var(--accent);">bin missing</span>`
+          : 'Tap to file';
+        return `<div class="item-row" onclick="fileContainerFromList('${c.id}')">
+          <div class="ititle">${escapeHtml(friendlyName(c))}</div>
+          <div class="imeta">${meta}</div>
+          <div class="iid">${c.id}</div>
+        </div>`;
+      }).join('');
+}
+
+/* Tapping an unassigned container opens the camera to pick a bin for it. */
+function fileContainerFromList(containerId) {
+  state.pendingBinSelection = containerId;
+  openBinScanModal();
+}
+
+/* Format the hierarchical location of a bin as "Property · Room · Spot",
+   or fall back to legacy 'location' field, or empty string. */
+function formatLocationPath(bin) {
+  if (!bin) return '';
+  const parts = [
+    bin.location_property,
+    bin.location_room,
+    bin.location_spot,
+  ].filter(p => p && p.trim());
+  if (parts.length) return parts.join(' · ');
+  if (bin.location && bin.location.trim()) return bin.location.trim();
+  return '';
+}
+
+/* Listen for search input on each tab */
+if (el('binSearch')) {
+  el('binSearch').addEventListener('input', renderLists);
+}
+if (el('unassignedSearch')) {
+  el('unassignedSearch').addEventListener('input', renderLists);
+}
+
+/* ---- TOP SEARCH BAR (on Scan tab) ---- */
+function setupTopSearch() {
+  const input = el('topSearch');
+  const list = el('topSearchResults');
+  if (!input || !list) return;
+  const render = () => {
+    const q = input.value.trim().toLowerCase();
+    if (!q) { list.classList.remove('open'); return; }
+    const containers = state.items.filter(i => i.type === 'container');
+    const matches = containers.filter(c =>
+      friendlyName(c).toLowerCase().includes(q) ||
+      c.id.toLowerCase().includes(q) ||
+      (c.notes || '').toLowerCase().includes(q) ||
+      (c.category || '').toLowerCase().includes(q)
+    ).slice(0, 8);
+    if (!matches.length) {
+      list.innerHTML = `<div class="autocomplete-item" style="color:var(--muted);font-style:italic;">No matches</div>`;
+      list.classList.add('open');
+      return;
+    }
+    list.innerHTML = matches.map(c => {
+      const binName = binFriendlyName(c.bin_id);
+      const locText = binName || 'Unfiled';
+      return `<div class="autocomplete-item" data-id="${c.id}">
+        <strong>${escapeHtml(friendlyName(c))}</strong>
+        <span style="color:var(--muted);font-size:11px;"> · ${escapeHtml(locText)}</span>
+        <span class="uses" style="color:var(--muted);opacity:0.5;">${c.id}</span>
+      </div>`;
+    }).join('');
+    list.classList.add('open');
+    list.querySelectorAll('.autocomplete-item').forEach(item => {
+      item.addEventListener('mousedown', e => {
+        e.preventDefault();
+        if (item.dataset.id) {
+          showItemDetail(item.dataset.id);
+          input.value = '';
+          list.classList.remove('open');
+        }
+      });
+    });
+  };
+  input.addEventListener('input', render);
+  input.addEventListener('focus', render);
+  input.addEventListener('blur', () => setTimeout(() => list.classList.remove('open'), 200));
+}
+
+/* ---- ADD BIN MODAL (from Bins tab) ---- */
+/* ---- ADD BIN: scan-first flow ----
+   Replaces the old manual-typing modal. Opens the camera, lets the user
+   scan a bin's QR, then drops into the same new-bin form that the
+   container→bin flow uses. */
+function openAddBinModal() {
+  state.addingBinMode = true;
+  state.pendingBinSelection = null;
+  el('binScanModal').classList.add('open');
+  // Customize the modal text for add-bin mode
+  const title = el('binScanTitle');
+  if (title) title.textContent = 'Scan New Bin';
+  const subtitle = el('binScanSubtitle');
+  if (subtitle) subtitle.textContent = "Scan the bin's QR to register it.";
+  el('binIdManualInput').value = '';
+  startBinScanner();
+}
+
+/* Called from the bin scanner when in add-mode (no pending container).
+   Closes the scanner and opens the new-bin form pre-filled with the
+   scanned label text. The form renders into the Scan tab's scanResult
+   div, so we switch tabs first to make it visible. */
+async function handleAddBinScanned(binId, rawPayload) {
+  state.addingBinMode = false;
+  closeBinScanModal();
+
+  // Check if it's already a known bin
+  try {
+    const r = await fetch(`/api/items/${binId}`);
+    const d = await r.json();
+    if (d.exists && d.record.type === 'bin') {
+      // Already registered — just open its detail page
+      toast('Already registered', 'green');
+      showItemDetail(binId);
+      return;
+    }
+  } catch(e) {}
+
+  // The new-bin form lives in the Scan tab. Switch there first so the
+  // user actually sees it, and hide the camera card so it doesn't cover
+  // the form.
+  if (state.currentTab !== 'scan') {
+    switchTab('scan');
+  }
+  stopScanner();
+  hideScanCard();
+
+  // Show the new-bin form, pre-filling from the QR's label text
+  const lineText = extractLabelTextFromQr(rawPayload);
+  newAsBin(binId, encodeURIComponent(lineText));
+}
+
+/* ---- INIT ---- */
+(async () => {
+  await refreshLocations();
+  await refreshItems();
+  setupTopSearch();
+  // Auto-start camera if user is on Scan tab
+  setTimeout(() => startScanner(), 300);
+})();
+</script>
+</body>
+</html>

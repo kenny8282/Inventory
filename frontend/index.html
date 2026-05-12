@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Gridfinity</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Archivo:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ece8de;
+    --paper: #fdfcf7;
+    --ink: #161616;
+    --accent: #c8341a;
+    --accent-2: #1a4d8f;
+    --green: #1a5d1a;
+    --muted: #6b6862;
+    --grid: rgba(22,22,22,0.05);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 42px 42px;
+  }
+  .app {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px 20px 48px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 16px;
+    margin-bottom: 32px;
+  }
+  h1 {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 900;
+    font-size: 36px;
+    line-height: 0.92;
+    letter-spacing: -0.025em;
+    text-transform: uppercase;
+  }
+  h1 .accent { color: var(--accent); }
+  h1 small {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: var(--muted);
+    font-weight: 500;
+    margin-top: 6px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 640px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+  .tile {
+    display: block;
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    padding: 32px 28px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.15s;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .tile:hover {
+    background: var(--ink);
+    color: var(--paper);
+    transform: translate(-2px, -2px);
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  .tile .icon {
+    font-size: 48px;
+    line-height: 1;
+    margin-bottom: 16px;
+    display: block;
+  }
+  .tile h2 {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 900;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .tile .desc {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .tile:hover .desc { color: rgba(253,252,247,0.7); }
+  .tile .meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .tile:hover .meta { color: white; }
+  .stats {
+    background: var(--paper);
+    border: 1.5px solid var(--ink);
+    padding: 18px 20px;
+    margin-bottom: 16px;
+  }
+  .stats h3 {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 800;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--ink);
+  }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  @media (max-width: 500px) {
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  .stat {
+    text-align: center;
+  }
+  .stat .value {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 900;
+    font-size: 28px;
+    line-height: 1;
+    color: var(--ink);
+  }
+  .stat .label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-top: 4px;
+    font-weight: 500;
+  }
+  .footer {
+    margin-top: auto;
+    padding-top: 32px;
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .footer .schema { color: var(--accent-2); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>
+      GRIDFINITY <span class="accent">//</span> HOME
+      <small>WORKSHOP INVENTORY · v1 SCHEMA</small>
+    </h1>
+  </header>
+
+  <div class="grid">
+    <a href="/forge/" class="tile">
+      <span class="icon">⎙</span>
+      <h2>Label Forge</h2>
+      <div class="desc">Generate, design, and print labels to paper or tape. Auto-cut, unique IDs, batch printing.</div>
+      <div class="meta">Open Forge →</div>
+    </a>
+    <a href="/inventory/" class="tile">
+      <span class="icon">⊞</span>
+      <h2>Inventory</h2>
+      <div class="desc">Scan QR codes, track containers and bins, see what's where. Phone-friendly with camera scan.</div>
+      <div class="meta">Open Inventory →</div>
+    </a>
+  </div>
+
+  <div class="stats">
+    <h3>System</h3>
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="value" id="totalCount">—</div>
+        <div class="label">Total Items</div>
+      </div>
+      <div class="stat">
+        <div class="value" id="binCount">—</div>
+        <div class="label">Bins</div>
+      </div>
+      <div class="stat">
+        <div class="value" id="containerCount">—</div>
+        <div class="label">Containers</div>
+      </div>
+      <div class="stat">
+        <div class="value" id="homelessCount">—</div>
+        <div class="label">Homeless</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    SCHEMA: <span class="schema">gridfinity-inventory/v1</span> ·
+    BACKEND: <span id="version">checking…</span>
+  </div>
+</div>
+
+<script>
+(async () => {
+  try {
+    const h = await fetch('/api/health').then(r => r.json());
+    document.getElementById('version').textContent = 'v' + h.version;
+  } catch(e) {
+    document.getElementById('version').textContent = 'offline';
+  }
+  try {
+    const s = await fetch('/api/stats').then(r => r.json());
+    document.getElementById('totalCount').textContent = s.counts.total ?? 0;
+    document.getElementById('binCount').textContent = s.counts.bin ?? 0;
+    document.getElementById('containerCount').textContent = s.counts.container ?? 0;
+    document.getElementById('homelessCount').textContent = s.homeless_containers ?? 0;
+  } catch(e) {}
+})();
+</script>
+</body>
+</html>

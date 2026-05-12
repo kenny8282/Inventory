@@ -1,0 +1,28 @@
+[Unit]
+Description=Gridfinity Label Forge Backend
+After=network.target
+
+[Service]
+Type=simple
+User=kenny
+Group=kenny
+WorkingDirectory=/opt/gridfinity
+Environment="GFLF_DATA_DIR=/var/lib/gridfinity"
+ExecStart=/opt/gridfinity/venv/bin/gunicorn \
+  --workers 2 \
+  --timeout 600 \
+  --bind 127.0.0.1:8765 \
+  --access-logfile - \
+  --error-logfile - \
+  gridfinity_backend:app
+Restart=always
+RestartSec=3
+
+# Security hardening
+ProtectSystem=full
+ProtectHome=true
+NoNewPrivileges=true
+ReadWritePaths=/var/lib/gridfinity
+
+[Install]
+WantedBy=multi-user.target

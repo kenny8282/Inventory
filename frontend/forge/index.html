@@ -1,0 +1,2270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Gridfinity Label Forge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Archivo:wght@500;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root {
+    --bg: #ece8de;
+    --paper: #fdfcf7;
+    --ink: #161616;
+    --rule: #161616;
+    --accent: #c8341a;
+    --accent-2: #1a4d8f;
+    --muted: #6b6862;
+    --grid: rgba(22,22,22,0.05);
+    --row-alt: #f5f2e9;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.45;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 42px 42px;
+  }
+  .app { max-width: 1500px; margin: 0 auto; padding: 28px 20px 80px; }
+
+  /* ------- HEADER ------- */
+  header {
+    border-bottom: 2px solid var(--rule);
+    padding-bottom: 14px;
+    margin-bottom: 22px;
+    display: flex; align-items: flex-end; justify-content: space-between;
+    flex-wrap: wrap; gap: 16px;
+  }
+  h1 {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 900;
+    font-size: 30px;
+    line-height: 0.92;
+    letter-spacing: -0.025em;
+    text-transform: uppercase;
+  }
+  h1 .accent { color: var(--accent); }
+  h1 small {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: var(--muted);
+    font-weight: 500;
+    margin-top: 6px;
+  }
+  .meta {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-align: right;
+    line-height: 1.7;
+  }
+  .meta .stat { color: var(--ink); font-weight: 700; font-size: 11px; }
+  .meta .schema { color: var(--accent-2); font-weight: 700; }
+
+  /* ------- LAYOUT ------- */
+  .layout {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 1000px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+  .panel {
+    background: var(--paper);
+    border: 1.5px solid var(--rule);
+    padding: 18px;
+    position: relative;
+  }
+  .panel + .panel { margin-top: 14px; }
+  .panel h2 {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 800;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--rule);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .panel h2 .num { color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+
+  /* ------- FIELDS ------- */
+  .field { margin-bottom: 12px; }
+  label {
+    display: block;
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 5px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  select, input[type="text"], input[type="number"], textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--rule);
+    padding: 7px 9px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--ink);
+    border-radius: 0;
+  }
+  select:focus, input:focus, textarea:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+  /* ------- BUTTONS ------- */
+  button {
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    padding: 9px 12px;
+    font-family: 'Archivo', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  button:hover { background: var(--accent); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.secondary {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--rule);
+  }
+  button.secondary:hover { background: var(--ink); color: var(--paper); }
+  button.warn:hover { background: var(--accent); border-color: var(--accent); color: white; }
+  .btn-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .btn-row button { flex: 1; min-width: 0; }
+
+  /* ------- PRESET PICKER ------- */
+  .preset-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+    margin-bottom: 10px;
+  }
+  .preset {
+    border: 1px solid var(--rule);
+    background: var(--bg);
+    padding: 7px 8px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.1s;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .preset:hover { background: var(--ink); color: var(--paper); }
+  .preset.active { background: var(--ink); color: var(--paper); }
+  .preset .name {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 700;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .preset .dim { font-size: 9.5px; color: var(--muted); margin-top: 1px; }
+  .preset.active .dim { color: rgba(253,252,247,0.65); }
+
+  /* ------- TABLE ------- */
+  .table-wrap {
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    overflow: auto;
+    max-height: 480px;
+  }
+  table.items {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  table.items thead {
+    position: sticky; top: 0;
+    background: var(--ink); color: var(--paper);
+    z-index: 2;
+  }
+  table.items thead th {
+    padding: 8px 8px;
+    font-family: 'Archivo', sans-serif;
+    font-weight: 700;
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    text-align: left;
+    border-right: 1px solid rgba(255,255,255,0.15);
+    white-space: nowrap;
+  }
+  table.items thead th:last-child { border-right: none; }
+  table.items tbody tr { border-bottom: 1px solid rgba(22,22,22,0.1); }
+  table.items tbody tr:nth-child(even) { background: var(--row-alt); }
+  table.items tbody td { padding: 4px 4px; vertical-align: middle; }
+  table.items tbody td:first-child { padding-left: 8px; }
+  table.items input[type="text"],
+  table.items textarea,
+  table.items select {
+    width: 100%;
+    border: 1px solid transparent;
+    background: transparent;
+    padding: 4px 6px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  table.items input[type="text"]:focus,
+  table.items textarea:focus,
+  table.items select:focus {
+    background: white;
+    border-color: var(--accent);
+    outline: none;
+  }
+  table.items textarea {
+    resize: vertical;
+    min-height: 28px;
+    line-height: 1.3;
+  }
+  table.items td.id-cell {
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    padding: 0 8px;
+  }
+  table.items td.actions {
+    white-space: nowrap;
+    padding-right: 8px;
+    text-align: right;
+  }
+  table.items td.actions button {
+    padding: 4px 8px;
+    font-size: 9.5px;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid rgba(22,22,22,0.2);
+    margin-left: 4px;
+  }
+  table.items td.actions button:hover {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  table.items td.actions .print-tape-btn {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+    font-size: 12px;
+    padding: 4px 9px;
+  }
+  table.items td.actions .print-tape-btn:hover {
+    background: #2a8a2a;
+    border-color: #2a8a2a;
+  }
+  table.items td.actions .print-tape-btn:disabled {
+    background: var(--muted);
+    border-color: var(--muted);
+    cursor: wait;
+  }
+  table.items td.qr-toggle { text-align: center; }
+  table.items td.copies { width: 60px; }
+  table.items td.copies input { text-align: center; }
+  table.items td.fmt-cell { width: 100px; }
+  table.items td.fmt-cell select { font-size: 10px; }
+  .table-empty {
+    padding: 32px;
+    text-align: center;
+    color: var(--muted);
+    font-style: italic;
+    font-size: 12px;
+  }
+  .col-line1 { width: 24%; }
+  .col-line2 { width: 24%; }
+  .col-line3 { width: 18%; }
+
+  /* ------- PREVIEW ------- */
+  .preview-wrap {
+    background: var(--paper);
+    border: 1.5px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    min-height: 600px;
+  }
+  .preview-header {
+    padding: 11px 18px;
+    border-bottom: 1px dashed var(--rule);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'Archivo', sans-serif;
+    font-weight: 800;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.13em;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .preview-header .info {
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    font-size: 10.5px;
+  }
+  .tabs { display: flex; gap: 4px; }
+  .tab {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--rule);
+    padding: 5px 10px;
+    font-size: 9.5px;
+    cursor: pointer;
+    font-family: 'Archivo', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+  }
+  .tab.active { background: var(--ink); color: var(--paper); }
+  .preview-body {
+    flex: 1;
+    padding: 24px;
+    background:
+      repeating-linear-gradient(
+        45deg,
+        transparent 0,
+        transparent 14px,
+        rgba(0,0,0,0.02) 14px,
+        rgba(0,0,0,0.02) 15px
+      ),
+      var(--paper);
+    overflow: auto;
+  }
+
+  /* ------- LABEL CARD ------- */
+  .label-card {
+    background: white;
+    border: 0.5px solid #888;
+    overflow: hidden;
+    box-sizing: border-box;
+    position: relative;
+  }
+  .label-card.has-shadow { box-shadow: 3px 3px 0 var(--rule); border: 1px solid var(--rule); }
+  .label-card .text-block {
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .label-card .line {
+    color: black;
+    line-height: 1;
+    white-space: nowrap;
+    text-align: center;
+  }
+  .label-card .line.line-multiline { white-space: normal; }
+  .label-card .line.primary {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -0.005em;
+  }
+  .label-card .line.secondary {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 600;
+    color: #222;
+  }
+  .label-card .line.tertiary {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    color: #444;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .label-card .qr-block {
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .label-card .qr-block canvas,
+  .label-card .qr-block img {
+    display: block;
+    width: 100%; height: 100%;
+  }
+
+  /* ------- SHEET PREVIEW ------- */
+  .sheet-stack { display: flex; flex-direction: column; align-items: center; gap: 28px; }
+  .sheet {
+    background: white;
+    border: 1px solid var(--rule);
+    box-shadow: 4px 4px 0 var(--rule);
+    position: relative;
+  }
+  .sheet-letter { width: 8.5in; height: 11in; }
+  .sheet-a4 { width: 210mm; height: 297mm; }
+  .sheet-inner {
+    position: absolute; inset: 0;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    align-content: flex-start;
+  }
+  .sheet-page-num {
+    position: absolute;
+    bottom: 4mm; right: 6mm;
+    font-size: 8px;
+    color: #aaa;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.08em;
+  }
+
+  /* ------- SINGLE PREVIEW ------- */
+  .single-stage {
+    display: flex; flex-wrap: wrap; gap: 20px;
+    align-items: flex-start; justify-content: center;
+  }
+  .single-frame {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .single-frame .caption {
+    font-size: 9.5px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-family: 'Archivo', sans-serif;
+    font-weight: 700;
+  }
+
+  /* ------- UTILITIES ------- */
+  .hint { font-size: 10px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+  .checkbox-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px;
+  }
+  .checkbox-row input { width: auto; }
+  .checkbox-row label { margin: 0; font-size: 11px; text-transform: none; letter-spacing: 0; color: var(--ink); }
+  .alert {
+    background: var(--row-alt);
+    border-left: 3px solid var(--accent-2);
+    padding: 8px 10px;
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: var(--ink);
+  }
+  .alert b { color: var(--accent-2); font-family: 'Archivo', sans-serif; letter-spacing: 0.05em; }
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    align-items: center;
+  }
+  .toolbar .spacer { flex: 1; }
+
+  /* ------- PRINT ------- */
+  @media print {
+    @page { size: var(--page-size, letter); margin: 0; }
+    body { background: white !important; background-image: none !important; }
+    .app > *:not(#print-area) { display: none !important; }
+    #print-area { display: block !important; }
+    .sheet {
+      box-shadow: none !important;
+      border: none !important;
+      page-break-after: always;
+      margin: 0 !important;
+    }
+    .sheet:last-child { page-break-after: auto; }
+    .label-card {
+      box-shadow: none !important;
+      border: 0.3px solid #999 !important;
+    }
+    .sheet-page-num { display: none; }
+  }
+  #print-area { display: none; }
+
+  input[type="checkbox"] {
+    accent-color: var(--accent);
+    width: 16px; height: 16px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header>
+    <h1>
+      GRIDFINITY <span class="accent">//</span> LABEL FORGE
+      <small>BATCH LABEL MAKER · UNIQUE-ID INVENTORY · v1 SCHEMA</small>
+    </h1>
+    <div class="meta">
+      <div>STORAGE: <span id="backendIndicator"></span></div>
+      <div>SCHEMA: <span class="schema">gridfinity-inventory/v1</span></div>
+      <div>ISSUED: <span class="stat" id="usedCount">0</span> codes</div>
+      <div>QUEUE: <span class="stat" id="queueCount">0</span> labels</div>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- ============ LEFT: CONFIG ============ -->
+    <div>
+
+      <!-- LABEL FORMAT -->
+      <div class="panel">
+        <h2><span>Label Format</span><span class="num">01</span></h2>
+        <div class="preset-grid" id="presetGrid"></div>
+        <div class="row">
+          <div class="field" style="margin-bottom: 0;">
+            <label>Width (mm)</label>
+            <input type="number" id="customW" step="0.1" />
+          </div>
+          <div class="field" style="margin-bottom: 0;">
+            <label>Height (mm)</label>
+            <input type="number" id="customH" step="0.1" />
+          </div>
+        </div>
+        <div class="hint">Custom dimensions override preset. QR is sized to label height minus padding (always max possible). Text auto-fits the remaining width.</div>
+      </div>
+
+      <!-- QR CONFIG -->
+      <div class="panel">
+        <h2><span>QR Defaults</span><span class="num">02</span></h2>
+        <div class="field">
+          <label>QR payload format</label>
+          <select id="qrMode">
+            <option value="id">ID only (X7K2M)</option>
+            <option value="combined" selected>ID + primary text</option>
+            <option value="json">JSON record (full)</option>
+            <option value="url">URL prefix + ID</option>
+          </select>
+        </div>
+        <div class="field" id="urlPrefixField" style="display:none;">
+          <label>URL prefix</label>
+          <input type="text" id="urlPrefix" placeholder="https://inv.local/" />
+        </div>
+        <div class="alert">
+          <b>FORWARD COMPAT:</b> Whatever payload you choose, the full record (id, lines, format) is logged to the registry. Your future inventory app reads the registry directly — QR only needs to encode the ID for lookups.
+        </div>
+      </div>
+
+      <!-- PRINT CONFIG -->
+      <div class="panel">
+        <h2><span>Sheet &amp; Print</span><span class="num">03</span></h2>
+        <div class="row">
+          <div class="field">
+            <label>Page size</label>
+            <select id="pageSize">
+              <option value="a4" selected>A4 (210×297mm)</option>
+              <option value="letter">US Letter (8.5×11")</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Page margin (mm)</label>
+            <input type="number" id="pageMargin" value="3" step="0.5" min="0" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Gap H (mm)</label>
+            <input type="number" id="gapH" value="1" step="0.5" min="0" />
+          </div>
+          <div class="field">
+            <label>Gap V (mm)</label>
+            <input type="number" id="gapV" value="1" step="0.5" min="0" />
+          </div>
+        </div>
+        <div class="checkbox-row" style="margin-bottom: 8px;">
+          <input type="checkbox" id="cutMarks" checked />
+          <label for="cutMarks">Faint cut guides (printable)</label>
+        </div>
+        <div class="hint" id="capacityHint" style="margin-bottom: 8px;"></div>
+        <div class="btn-row">
+          <button id="printBtn">⎙ Print Sheet</button>
+        </div>
+      </div>
+
+      <!-- DATA -->
+      <div class="panel">
+        <h2><span>Registry &amp; Data</span><span class="num">04</span></h2>
+        <div class="hint" style="margin-bottom: 10px;">
+          All issued labels are logged to a v1 inventory file. Export now, import into your future inventory app — same schema both ways.
+        </div>
+        <div class="btn-row">
+          <button id="exportJsonBtn" class="secondary">⤓ Export JSON</button>
+          <button id="exportCsvBtn" class="secondary">⤓ Export CSV</button>
+        </div>
+        <div class="btn-row" style="margin-top: 6px;">
+          <button id="importBtn" class="secondary">⤒ Import JSON</button>
+          <input type="file" id="importFile" accept="application/json,.json" style="display:none;" />
+        </div>
+        <div class="btn-row" style="margin-top: 6px;">
+          <button id="resetBtn" class="secondary warn">⚠ Reset Everything</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============ RIGHT: TABLE + PREVIEW ============ -->
+    <div>
+
+      <!-- ITEMS TABLE -->
+      <div class="panel" style="padding: 14px;">
+        <div class="toolbar">
+          <button id="addRowBtn">+ Add Row</button>
+          <button id="addBlankRowsBtn" class="secondary">+ 5 Blank Rows</button>
+          <button id="dupSelectedBtn" class="secondary">Duplicate Selected</button>
+          <button id="delSelectedBtn" class="secondary warn">Delete Selected</button>
+          <div class="spacer"></div>
+          <button id="printBatchBtn" style="background:#1a5d1a;">⎙⎙ Print Selected to Tape</button>
+          <button id="reissueBtn" class="secondary">⟳ Reissue IDs</button>
+          <button id="clearTableBtn" class="secondary warn">Clear Table</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="items" id="itemsTable">
+            <thead>
+              <tr>
+                <th style="width: 30px;"><input type="checkbox" id="selectAll" /></th>
+                <th style="width: 64px;">ID</th>
+                <th class="col-line1">Line 1 (primary)</th>
+                <th class="col-line2">Line 2</th>
+                <th class="col-line3">Line 3</th>
+                <th style="width: 50px;">QR</th>
+                <th style="width: 60px;">Copies</th>
+                <th style="width: 80px;">Format</th>
+                <th style="width: 90px;"></th>
+              </tr>
+            </thead>
+            <tbody id="itemsBody"></tbody>
+          </table>
+        </div>
+        <div class="hint" style="margin-top: 8px;">
+          <b>Line 1</b> auto-sizes largest, <b>Line 2</b> medium, <b>Line 3</b> smallest. Leave a line blank to skip it. To force a line break inside a single line, use <b>Shift+Enter</b> (multi-line cells).
+        </div>
+      </div>
+
+      <!-- PREVIEW -->
+      <div class="preview-wrap" style="margin-top: 16px;">
+        <div class="preview-header">
+          <div style="display: flex; gap: 14px; align-items: center;">
+            <span>Preview</span>
+            <span class="info" id="previewInfo">— mm × — mm</span>
+          </div>
+          <div class="tabs">
+            <button class="tab active" data-tab="single">Single</button>
+            <button class="tab" data-tab="sheet">Sheet</button>
+          </div>
+        </div>
+        <div class="preview-body" id="previewBody">
+          <div class="single-stage" id="singleStage">
+            <div style="color: var(--muted); font-size: 12px; text-align: center; padding: 40px;">
+              Add a row to the table to see a preview here.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="print-area"></div>
+
+<script>
+/* ============================================================================
+   GRIDFINITY LABEL FORGE
+   Schema: gridfinity-inventory/v1
+   ============================================================================ */
+
+const SCHEMA_VERSION = 'gridfinity-inventory/v1';
+
+/* ---- PRESETS (mm) ----
+   Standard Gridfinity label tab is ~12mm tall. Width per # of grid units (42mm
+   pitch, ~36-40mm usable per unit allowing tolerance & rounded corners).
+   Modern Gridfinity Case sizes are estimates for drawer-front labels; adjust
+   the custom W/H fields to match your specific drawers. */
+const PRESETS = [
+  { id: 'gfBox',   name: 'Gridfinity Box',     w: 40,  h: 12, desc: '40 × 12 mm bin tab' },
+  { id: 'mgcXL',   name: 'Modern Case XL',     w: 124, h: 13, desc: '124 × 13 mm drawer' },
+];
+
+/* ---- STATE ---- */
+const state = {
+  presetId: 'gfBox',
+  customW: null,
+  customH: null,
+  rows: [],            // [{ uid, id, line1, line2, line3, qr, copies, formatId, created }]
+  used: new Set(),     // all IDs ever issued (persisted)
+  registry: {},        // id -> full record (persisted)
+  previewTab: 'single',
+};
+
+/* ---- ID GENERATION ----
+   Alphabet excludes 0,O,1,I,L for human readability.
+   31 chars × 5 length = 28.6M combinations. */
+const ALPHA = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+const ID_LEN = 5;
+
+function randomId() {
+  let s = '';
+  for (let i = 0; i < ID_LEN; i++) s += ALPHA[Math.floor(Math.random() * ALPHA.length)];
+  return s;
+}
+
+async function issueId() {
+  for (let i = 0; i < 200; i++) {
+    const id = randomId();
+    if (!state.used.has(id)) {
+      state.used.add(id);
+      await persistUsed();
+      return id;
+    }
+  }
+  throw new Error('ID space exhausted');
+}
+
+/* ---- PERSISTENCE ----
+   Storage backend selection (tried in order):
+   1. Server API at /api/* (when hosted on Pi with Flask backend) — shared
+      across all devices on the network
+   2. Browser localStorage — per-device, used when no server is available
+   3. window.storage (Claude environment)
+   4. In-memory (last resort)
+
+   The HTML transparently uses whichever is available. */
+const KEY_USED = 'gflf:used';
+const KEY_REG  = 'gflf:registry';
+const KEY_ROWS = 'gflf:rows';
+const KEY_CFG  = 'gflf:config';
+
+// Backend types
+const BACKEND_API = 'api';
+const BACKEND_LOCAL = 'local';
+const BACKEND_CLAUDE = 'claude';
+const BACKEND_MEMORY = 'memory';
+
+let _backendType = BACKEND_MEMORY;
+let _backendLabel = 'memory only';
+
+async function _probeApi() {
+  // Try to reach /api/health with a short timeout. Only succeeds when the
+  // Flask backend is running on this host.
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 1500);
+    const r = await fetch('/api/health', { signal: ctl.signal, cache: 'no-store' });
+    clearTimeout(t);
+    if (r.ok) {
+      const j = await r.json();
+      if (j && j.ok) return true;
+    }
+  } catch (e) { /* api not available */ }
+  return false;
+}
+
+function _makeApiStorage() {
+  return {
+    get: async (k) => {
+      try {
+        const r = await fetch('/api/kv/' + encodeURIComponent(k), { cache: 'no-store' });
+        if (r.status === 404) return null;
+        if (!r.ok) throw new Error('http ' + r.status);
+        const j = await r.json();
+        return j && j.value !== undefined ? { value: j.value } : null;
+      } catch (e) {
+        console.warn('api get failed for', k, e);
+        return null;
+      }
+    },
+    set: async (k, v) => {
+      try {
+        const r = await fetch('/api/kv/' + encodeURIComponent(k), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: v }),
+        });
+        if (!r.ok) throw new Error('http ' + r.status);
+      } catch (e) {
+        console.warn('api set failed for', k, e);
+      }
+    },
+  };
+}
+
+function _makeLocalStorage() {
+  return {
+    get: async (k) => {
+      const v = localStorage.getItem(k);
+      return v === null ? null : { value: v };
+    },
+    set: async (k, v) => { localStorage.setItem(k, v); },
+  };
+}
+
+function _makeMemoryStorage() {
+  const mem = {};
+  return {
+    get: async (k) => mem[k] !== undefined ? { value: mem[k] } : null,
+    set: async (k, v) => { mem[k] = v; },
+  };
+}
+
+// Initialize as localStorage/memory; upgrade to API after async probe.
+let _storage;
+try {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('__gflf_test__', '1');
+    localStorage.removeItem('__gflf_test__');
+    _storage = _makeLocalStorage();
+    _backendType = BACKEND_LOCAL;
+    _backendLabel = 'this device only';
+  } else if (typeof window !== 'undefined' && window.storage) {
+    _storage = window.storage;
+    _backendType = BACKEND_CLAUDE;
+    _backendLabel = 'claude env';
+  } else {
+    _storage = _makeMemoryStorage();
+  }
+} catch (e) {
+  _storage = _makeMemoryStorage();
+}
+
+async function _upgradeToApiIfAvailable() {
+  const ok = await _probeApi();
+  if (ok) {
+    _storage = _makeApiStorage();
+    _backendType = BACKEND_API;
+    _backendLabel = 'shared on Pi';
+    updateBackendIndicator();
+    // Reload data from the server (overrides anything loaded from localStorage)
+    await loadAll();
+    renderAll();
+    // Start polling for changes from other devices
+    startSyncPolling();
+  } else {
+    updateBackendIndicator();
+  }
+}
+
+function updateBackendIndicator() {
+  const el = document.getElementById('backendIndicator');
+  if (!el) return;
+  const colors = {
+    [BACKEND_API]:    { dot: '#2a8a2a', text: 'SHARED · Pi' },
+    [BACKEND_LOCAL]:  { dot: '#c8341a', text: 'LOCAL · this browser only' },
+    [BACKEND_CLAUDE]: { dot: '#1a4d8f', text: 'CLAUDE ENV' },
+    [BACKEND_MEMORY]: { dot: '#888',    text: 'MEMORY ONLY (no save)' },
+  };
+  const c = colors[_backendType] || colors[BACKEND_MEMORY];
+  el.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c.dot};margin-right:6px;vertical-align:middle;"></span>${c.text}`;
+}
+
+/* ---- SYNC POLLING (API backend only) ----
+   When another device adds labels, this device should pick up the changes.
+   Poll the registry every 5 seconds; if it changed, reload and re-render. */
+let _syncTimer = null;
+let _lastRegistryHash = '';
+function startSyncPolling() {
+  if (_syncTimer) clearInterval(_syncTimer);
+  _syncTimer = setInterval(async () => {
+    if (_backendType !== BACKEND_API) return;
+    try {
+      const r = await fetch('/api/registry-hash', { cache: 'no-store' });
+      if (!r.ok) return;
+      const j = await r.json();
+      if (j.hash && j.hash !== _lastRegistryHash) {
+        _lastRegistryHash = j.hash;
+        // Pull fresh data
+        const reg = await _storage.get(KEY_REG);
+        const used = await _storage.get(KEY_USED);
+        if (reg && reg.value) state.registry = JSON.parse(reg.value);
+        if (used && used.value) state.used = new Set(JSON.parse(used.value));
+        updateMeta();
+      }
+    } catch (e) { /* network blip, try again next interval */ }
+  }, 5000);
+}
+
+async function persistUsed() {
+  try { await _storage.set(KEY_USED, JSON.stringify([...state.used])); } catch(e){}
+}
+async function persistRegistry() {
+  try { await _storage.set(KEY_REG, JSON.stringify(state.registry)); } catch(e){}
+}
+async function persistRows() {
+  try { await _storage.set(KEY_ROWS, JSON.stringify(state.rows)); } catch(e){}
+}
+async function persistConfig() {
+  try {
+    await _storage.set(KEY_CFG, JSON.stringify({
+      presetId: state.presetId,
+      customW: state.customW,
+      customH: state.customH,
+      qrMode: el('qrMode').value,
+      urlPrefix: el('urlPrefix').value,
+      pageSize: el('pageSize').value,
+      pageMargin: el('pageMargin').value,
+      gapH: el('gapH').value,
+      gapV: el('gapV').value,
+      cutMarks: el('cutMarks').checked,
+    }));
+  } catch(e){}
+}
+
+async function loadAll() {
+  try {
+    const u = await _storage.get(KEY_USED);
+    if (u && u.value) state.used = new Set(JSON.parse(u.value));
+  } catch(e){}
+  try {
+    const r = await _storage.get(KEY_REG);
+    if (r && r.value) state.registry = JSON.parse(r.value);
+  } catch(e){}
+  try {
+    const rs = await _storage.get(KEY_ROWS);
+    if (rs && rs.value) state.rows = JSON.parse(rs.value);
+  } catch(e){}
+  try {
+    const c = await _storage.get(KEY_CFG);
+    if (c && c.value) {
+      const cfg = JSON.parse(c.value);
+      if (cfg.presetId) state.presetId = cfg.presetId;
+      if (cfg.customW != null) state.customW = cfg.customW;
+      if (cfg.customH != null) state.customH = cfg.customH;
+      setTimeout(() => {
+        if (cfg.qrMode) el('qrMode').value = cfg.qrMode;
+        if (cfg.urlPrefix) el('urlPrefix').value = cfg.urlPrefix;
+        if (cfg.pageSize) el('pageSize').value = cfg.pageSize;
+        if (cfg.pageMargin) el('pageMargin').value = cfg.pageMargin;
+        if (cfg.gapH) el('gapH').value = cfg.gapH;
+        if (cfg.gapV) el('gapV').value = cfg.gapV;
+        if (cfg.cutMarks != null) el('cutMarks').checked = cfg.cutMarks;
+        toggleUrlField();
+        renderAll();
+      }, 0);
+    }
+  } catch(e){}
+}
+
+/* ---- DOM HELPERS ---- */
+function el(id) { return document.getElementById(id); }
+function uid() { return 'r' + Math.random().toString(36).slice(2, 10); }
+
+/* ---- DIMENSIONS ---- */
+function getActiveDims() {
+  const cw = parseFloat(el('customW').value);
+  const ch = parseFloat(el('customH').value);
+  const preset = PRESETS.find(p => p.id === state.presetId) || PRESETS[0];
+  const w = (!isNaN(cw) && cw > 0) ? cw : preset.w;
+  const h = (!isNaN(ch) && ch > 0) ? ch : preset.h;
+  return { w, h, preset };
+}
+function getRowDims(row) {
+  // each row may override the format
+  if (row.formatId === 'custom') {
+    return getActiveDims();
+  }
+  const p = PRESETS.find(p => p.id === row.formatId);
+  if (p) return { w: p.w, h: p.h, preset: p };
+  return getActiveDims();
+}
+
+/* ---- QR ---- */
+function buildQrPayload(row) {
+  const mode = el('qrMode').value;
+  const id = row.id || '?????';
+  const name = row.line1 || '';
+  switch (mode) {
+    case 'id': return id;
+    case 'combined': return name ? id + '|' + name : id;
+    case 'json':
+      return JSON.stringify({
+        s: SCHEMA_VERSION,
+        id,
+        l: [row.line1, row.line2, row.line3].filter(x => x && x.trim())
+      });
+    case 'url': {
+      const p = (el('urlPrefix').value || '').trim();
+      if (!p) return id;
+      return (p.endsWith('/') ? p : p + '/') + id;
+    }
+  }
+  return id;
+}
+
+function generateQRDataUrl(text, sizePx) {
+  // Use qrcodejs into a hidden div, then snap the canvas/img.
+  const tmp = document.createElement('div');
+  tmp.style.position = 'absolute'; tmp.style.left = '-99999px';
+  document.body.appendChild(tmp);
+  try {
+    new QRCode(tmp, {
+      text: text || ' ',
+      width: sizePx,
+      height: sizePx,
+      correctLevel: QRCode.CorrectLevel.M,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
+    });
+    const cv = tmp.querySelector('canvas');
+    const img = tmp.querySelector('img');
+    let url = '';
+    if (cv) url = cv.toDataURL('image/png');
+    else if (img) url = img.src;
+    return url;
+  } finally {
+    document.body.removeChild(tmp);
+  }
+}
+
+/* ---- LABEL CARD BUILDER ---- */
+const MM_TO_PX = 96 / 25.4;
+
+function buildLabelCard(row, opts = {}) {
+  const { withShadow = false } = opts;
+  const dims = getRowDims(row);
+  const wPx = dims.w * MM_TO_PX;
+  const hPx = dims.h * MM_TO_PX;
+
+  const card = document.createElement('div');
+  card.className = 'label-card' + (withShadow ? ' has-shadow' : '');
+  card.style.width = wPx + 'px';
+  card.style.height = hPx + 'px';
+  card.style.position = 'relative';
+
+  // ---- GEOMETRY (matches tape printer printable area) ----
+  // The printer's actual printable area for 12mm tape is ~9.88mm tall
+  // (70 pixels at 180 DPI). The other ~2.12mm of the 12mm tape is dead
+  // zone the print head physically cannot reach.
+  // We make the QR fit within that printable height, NOT the full tape.
+  //
+  // Horizontal: 3mm cut-clearance on each side (cutter needs clear tape)
+  // Gap between text and QR: 0.8mm
+  // Printable heights per tape width (mm of printable / total mm):
+  const PRINTABLE_HEIGHT_MM_TABLE = {
+    6: 4.5, 9: 7.05, 12: 9.88, 18: 15.8, 24: 18.05
+  };
+  const MARGIN_H_MM = 4.0;   // left/right (cut clearance — matches TAPE_CUT_CLEAR_MM)
+  const GAP_MM = 0.8;
+  const marginHpx = MARGIN_H_MM * MM_TO_PX;
+  const gapPx = GAP_MM * MM_TO_PX;
+
+  // Figure out the printable height for this label's tape size (default
+  // to 12mm if not in table). The QR fits within this printable height,
+  // not the full physical label height.
+  const printableHeightMm = PRINTABLE_HEIGHT_MM_TABLE[dims.h] || (dims.h * 0.82);
+  const printableHeightPx = printableHeightMm * MM_TO_PX;
+  // Vertical inset = half the unprintable area on top + bottom
+  const marginVpx = (hPx - printableHeightPx) / 2;
+
+  const qrSidePx = row.qr ? (hPx - 2 * marginVpx) : 0;
+  const qrLeftPx = row.qr ? (wPx - marginHpx - qrSidePx) : 0;
+
+  // Text box geometry
+  const textLeft = marginHpx;
+  const textTop = marginVpx;
+  const textHeight = hPx - 2 * marginVpx;
+  const textRight = row.qr ? (qrLeftPx - gapPx) : (wPx - marginHpx);
+  const textWidth = textRight - textLeft;
+
+  // ---- TEXT BLOCK ----
+  const tb = document.createElement('div');
+  tb.className = 'text-block';
+  tb.style.position = 'absolute';
+  tb.style.left = textLeft + 'px';
+  tb.style.top = textTop + 'px';
+  tb.style.width = textWidth + 'px';
+  tb.style.height = textHeight + 'px';
+  tb.style.padding = '0';
+  card.appendChild(tb);
+
+  const lines = [];
+  if (row.line1 && row.line1.trim()) lines.push({ text: row.line1, cls: 'primary', weight: 1.0 });
+  if (row.line2 && row.line2.trim()) lines.push({ text: row.line2, cls: 'secondary', weight: 0.62 });
+  if (row.line3 && row.line3.trim()) lines.push({ text: row.line3, cls: 'tertiary', weight: 0.50 });
+  if (lines.length === 0) {
+    lines.push({ text: row.id || '?????', cls: 'primary', weight: 1.0 });
+  }
+
+  // ---- QR BLOCK ----
+  if (row.qr) {
+    const qb = document.createElement('div');
+    qb.className = 'qr-block';
+    qb.style.position = 'absolute';
+    qb.style.left = qrLeftPx + 'px';
+    qb.style.top = marginVpx + 'px';
+    qb.style.width = qrSidePx + 'px';
+    qb.style.height = qrSidePx + 'px';
+    const payload = buildQrPayload(row);
+    const url = generateQRDataUrl(payload, Math.max(80, Math.round(qrSidePx * 4)));
+    if (url) {
+      const img = document.createElement('img');
+      img.src = url;
+      qb.appendChild(img);
+    }
+    card.appendChild(qb);
+  }
+
+  // Build line elements
+  const lineEls = lines.map(l => {
+    const d = document.createElement('div');
+    d.className = 'line ' + l.cls;
+    d.textContent = l.text;
+    tb.appendChild(d);
+    return { el: d, weight: l.weight };
+  });
+
+  card._fit = function() {
+    fitTextLines(tb, lineEls, textWidth, textHeight);
+  };
+
+  return card;
+}
+
+/* ---- TEXT AUTOFIT ----
+   Uses an offscreen measurement element (not inside flex) for reliable
+   scrollWidth/offsetHeight. Per line: binary search the largest font-size
+   where rendered text fits within (lineWidth × lineHeight). */
+function fitTextLines(textBlock, lineEls, boxW, boxH) {
+  if (!lineEls.length || boxW <= 0 || boxH <= 0) return;
+
+  // Center text in the text box
+  textBlock.style.display = 'flex';
+  textBlock.style.flexDirection = 'column';
+  textBlock.style.justifyContent = 'center';
+  textBlock.style.alignItems = 'center';
+
+  const totalWeight = lineEls.reduce((s, l) => s + l.weight, 0);
+
+  // Create an offscreen measurement node — guarantees clean scrollWidth.
+  const measurer = document.createElement('span');
+  measurer.style.cssText = [
+    'position: absolute',
+    'left: -99999px',
+    'top: -99999px',
+    'visibility: hidden',
+    'white-space: nowrap',
+    'line-height: 1',
+    'padding: 0',
+    'margin: 0',
+    'border: 0',
+  ].join(';');
+  document.body.appendChild(measurer);
+
+  try {
+    for (const le of lineEls) {
+      const lineH = (le.weight / totalWeight) * boxH;
+
+      // Copy the element's computed font properties to the measurer
+      const cs = window.getComputedStyle(le.el);
+      measurer.style.fontFamily = cs.fontFamily;
+      measurer.style.fontWeight = cs.fontWeight;
+      measurer.style.fontStyle = cs.fontStyle;
+      measurer.style.letterSpacing = cs.letterSpacing;
+      measurer.style.textTransform = cs.textTransform;
+      measurer.textContent = le.el.textContent;
+
+      // Binary search for largest font-size where text fits in lineH height
+      // AND boxW width.
+      let lo = 2, hi = boxH * 2, best = lo;
+      for (let i = 0; i < 28; i++) {
+        const mid = (lo + hi) / 2;
+        measurer.style.fontSize = mid + 'px';
+        const w = measurer.offsetWidth;
+        const h = measurer.offsetHeight;
+        if (w <= boxW && h <= lineH) {
+          best = mid;
+          lo = mid;
+        } else {
+          hi = mid;
+        }
+      }
+
+      // Apply the result to the actual element
+      le.el.style.lineHeight = '1';
+      le.el.style.padding = '0';
+      le.el.style.margin = '0';
+      le.el.style.fontSize = best + 'px';
+    }
+  } finally {
+    document.body.removeChild(measurer);
+  }
+}
+
+/* ---- PRESET RENDERING ---- */
+function renderPresets() {
+  const grid = el('presetGrid');
+  grid.innerHTML = '';
+  PRESETS.forEach(p => {
+    const b = document.createElement('button');
+    b.className = 'preset' + (p.id === state.presetId ? ' active' : '');
+    b.innerHTML = `<div class="name">${p.name}</div><div class="dim">${p.w} × ${p.h} mm · ${p.desc}</div>`;
+    b.addEventListener('click', () => {
+      state.presetId = p.id;
+      el('customW').value = '';
+      el('customH').value = '';
+      state.customW = null; state.customH = null;
+      renderPresets();
+      renderAll();
+      persistConfig();
+    });
+    grid.appendChild(b);
+  });
+  const dims = getActiveDims();
+  el('previewInfo').textContent = `${dims.w} × ${dims.h} mm · default format`;
+}
+
+/* ---- TABLE RENDERING ---- */
+function renderTable() {
+  const tb = el('itemsBody');
+  tb.innerHTML = '';
+  if (state.rows.length === 0) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="9"><div class="table-empty">No rows. Click <b>+ Add Row</b> to begin.</div></td>`;
+    tb.appendChild(tr);
+    return;
+  }
+  state.rows.forEach((row, idx) => {
+    const tr = document.createElement('tr');
+    tr.dataset.uid = row.uid;
+    // Format options
+    const fmtOptions = PRESETS.map(p =>
+      `<option value="${p.id}" ${row.formatId === p.id ? 'selected' : ''}>${p.name}</option>`
+    ).join('') + `<option value="custom" ${row.formatId === 'custom' ? 'selected' : ''}>Default</option>`;
+
+    tr.innerHTML = `
+      <td><input type="checkbox" class="row-sel" ${row.selected ? 'checked' : ''} /></td>
+      <td class="id-cell">${row.id || '...'}</td>
+      <td><textarea class="line1" rows="1" placeholder="Primary text">${escapeHtml(row.line1 || '')}</textarea></td>
+      <td><textarea class="line2" rows="1" placeholder="Secondary">${escapeHtml(row.line2 || '')}</textarea></td>
+      <td><input class="line3" type="text" placeholder="Tertiary / spec" value="${escapeAttr(row.line3 || '')}" /></td>
+      <td class="qr-toggle"><input type="checkbox" class="qr-chk" ${row.qr ? 'checked' : ''} /></td>
+      <td class="copies"><input type="number" class="copies-in" min="1" max="200" value="${row.copies || 1}" /></td>
+      <td class="fmt-cell"><select class="fmt-sel">${fmtOptions}</select></td>
+      <td class="actions">
+        <button class="print-tape-btn" title="Print to tape">⎙</button>
+        <button class="dup-btn" title="Duplicate">⎘</button>
+        <button class="del-btn" title="Delete">✕</button>
+      </td>
+    `;
+    tb.appendChild(tr);
+
+    // Wire up
+    tr.querySelector('.row-sel').addEventListener('change', e => {
+      row.selected = e.target.checked;
+    });
+    const onTextChange = (field) => (e) => {
+      row[field] = e.target.value;
+      // ID-cell may need refresh of QR payload if "combined"
+      persistRows();
+      schedulePreview();
+    };
+    tr.querySelector('.line1').addEventListener('input', onTextChange('line1'));
+    tr.querySelector('.line2').addEventListener('input', onTextChange('line2'));
+    tr.querySelector('.line3').addEventListener('input', onTextChange('line3'));
+    tr.querySelector('.qr-chk').addEventListener('change', e => {
+      row.qr = e.target.checked;
+      persistRows();
+      logRow(row);
+      schedulePreview();
+    });
+    tr.querySelector('.copies-in').addEventListener('input', e => {
+      row.copies = Math.max(1, parseInt(e.target.value) || 1);
+      persistRows();
+      updateCapacityHint();
+      schedulePreview();
+    });
+    tr.querySelector('.fmt-sel').addEventListener('change', e => {
+      row.formatId = e.target.value;
+      persistRows();
+      schedulePreview();
+    });
+    tr.querySelector('.dup-btn').addEventListener('click', () => duplicateRow(row.uid));
+    tr.querySelector('.del-btn').addEventListener('click', () => deleteRow(row.uid));
+    tr.querySelector('.print-tape-btn').addEventListener('click', () => printRowToTape(row.uid));
+
+    // Auto-grow textarea on input (capped)
+    tr.querySelectorAll('textarea').forEach(ta => {
+      const grow = () => {
+        ta.style.height = 'auto';
+        ta.style.height = Math.min(80, ta.scrollHeight) + 'px';
+      };
+      ta.addEventListener('input', grow);
+      grow();
+    });
+  });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+function escapeAttr(s) { return escapeHtml(s); }
+
+/* ---- ROW OPERATIONS ---- */
+async function addRow(opts = {}) {
+  const id = await issueId();
+  const row = {
+    uid: uid(),
+    id,
+    line1: opts.line1 || '',
+    line2: opts.line2 || '',
+    line3: opts.line3 || '',
+    qr: opts.qr !== undefined ? opts.qr : true,
+    copies: opts.copies || 1,
+    formatId: opts.formatId || 'custom',
+    selected: false,
+    created: new Date().toISOString(),
+  };
+  state.rows.push(row);
+  logRow(row);
+  await persistRows();
+  renderAll();
+  // Focus line1 of the new row
+  setTimeout(() => {
+    const tr = document.querySelector(`tr[data-uid="${row.uid}"]`);
+    if (tr) {
+      const ta = tr.querySelector('.line1');
+      if (ta) ta.focus();
+    }
+  }, 0);
+}
+
+async function duplicateRow(uidStr) {
+  const row = state.rows.find(r => r.uid === uidStr);
+  if (!row) return;
+  await addRow({
+    line1: row.line1, line2: row.line2, line3: row.line3,
+    qr: row.qr, copies: row.copies, formatId: row.formatId
+  });
+}
+async function deleteRow(uidStr) {
+  state.rows = state.rows.filter(r => r.uid !== uidStr);
+  await persistRows();
+  renderAll();
+}
+
+function logRow(row) {
+  state.registry[row.id] = {
+    id: row.id,
+    lines: [row.line1, row.line2, row.line3].filter(x => x && x.trim()),
+    qr: !!row.qr,
+    qr_payload: buildQrPayload(row),
+    label_format: row.formatId,
+    created: row.created,
+    updated: new Date().toISOString(),
+  };
+  persistRegistry();
+}
+
+/* ---- PREVIEW ---- */
+let previewTimer = null;
+function schedulePreview() {
+  if (previewTimer) clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => {
+    // also update registry payload (covers text changes for combined/json modes)
+    state.rows.forEach(logRow);
+    renderPreview();
+    updateMeta();
+  }, 200);
+}
+
+function renderPreview() {
+  const body = el('previewBody');
+  body.innerHTML = '';
+  if (state.rows.length === 0) {
+    body.innerHTML = `<div class="single-stage"><div style="color: var(--muted); font-size: 12px; text-align: center; padding: 40px;">Add a row to see a preview.</div></div>`;
+    return;
+  }
+  if (state.previewTab === 'single') {
+    renderSinglePreview(body);
+  } else {
+    renderSheetPreview(body);
+  }
+}
+
+function renderSinglePreview(body) {
+  const stage = document.createElement('div');
+  stage.className = 'single-stage';
+  body.appendChild(stage);
+  // Show first 6 distinct rows (preview only)
+  state.rows.slice(0, 6).forEach(row => {
+    const frame = document.createElement('div');
+    frame.className = 'single-frame';
+    const card = buildLabelCard(row, { withShadow: true });
+    frame.appendChild(card);
+    const dims = getRowDims(row);
+    const cap = document.createElement('div');
+    cap.className = 'caption';
+    cap.textContent = `${row.id} · ${dims.w}×${dims.h}mm · ×${row.copies}`;
+    frame.appendChild(cap);
+    stage.appendChild(frame);
+    // fit text after attached
+    requestAnimationFrame(() => card._fit && card._fit());
+  });
+  if (state.rows.length > 6) {
+    const more = document.createElement('div');
+    more.style.cssText = 'width:100%;text-align:center;color:var(--muted);font-size:11px;font-family:Archivo;text-transform:uppercase;letter-spacing:0.1em;margin-top:8px;';
+    more.textContent = `+ ${state.rows.length - 6} more rows · switch to Sheet view`;
+    body.appendChild(more);
+  }
+}
+
+/* ---- SHEET LAYOUT ----
+   Tile every label×copies onto pages, packing greedily by row.
+   Mixed sizes are supported: each label takes its own w×h. */
+function paginate(pageW_mm, pageH_mm, marginMm, gapH, gapV, items) {
+  const innerW = pageW_mm - 2 * marginMm;
+  const innerH = pageH_mm - 2 * marginMm;
+  const pages = [];
+  let curPage = [];
+  let cursorX = 0, cursorY = 0, rowH = 0;
+  // Each item has w, h in mm
+  for (const it of items) {
+    if (it.w > innerW || it.h > innerH) {
+      // Won't fit at all; skip with marker
+      it.skipped = true;
+      continue;
+    }
+    // If overflows current row width, wrap
+    if (cursorX + it.w > innerW + 0.001) {
+      cursorX = 0;
+      cursorY += rowH + gapV;
+      rowH = 0;
+    }
+    // If overflows page height, new page
+    if (cursorY + it.h > innerH + 0.001) {
+      pages.push(curPage);
+      curPage = [];
+      cursorX = 0; cursorY = 0; rowH = 0;
+    }
+    curPage.push({ ...it, x: cursorX, y: cursorY });
+    cursorX += it.w + gapH;
+    if (it.h > rowH) rowH = it.h;
+  }
+  if (curPage.length) pages.push(curPage);
+  return pages;
+}
+
+function expandQueue() {
+  // Flatten rows into individual labels per copy
+  const items = [];
+  for (const row of state.rows) {
+    const dims = getRowDims(row);
+    const n = Math.max(1, row.copies || 1);
+    for (let i = 0; i < n; i++) {
+      items.push({ row, w: dims.w, h: dims.h });
+    }
+  }
+  return items;
+}
+
+function renderSheetPreview(body) {
+  const pageSize = el('pageSize').value;
+  const isA4 = pageSize === 'a4';
+  const pageW = isA4 ? 210 : 215.9;
+  const pageH = isA4 ? 297 : 279.4;
+  const margin = parseFloat(el('pageMargin').value) || 8;
+  const gapH = parseFloat(el('gapH').value) || 0;
+  const gapV = parseFloat(el('gapV').value) || 0;
+
+  const items = expandQueue();
+  const pages = paginate(pageW, pageH, margin, gapH, gapV, items);
+
+  const stack = document.createElement('div');
+  stack.className = 'sheet-stack';
+  body.appendChild(stack);
+
+  if (pages.length === 0) {
+    stack.innerHTML = `<div style="color: var(--muted); font-size: 12px; padding: 40px;">No labels in queue.</div>`;
+    return;
+  }
+
+  pages.forEach((page, pgIdx) => {
+    const sheet = document.createElement('div');
+    sheet.className = 'sheet ' + (isA4 ? 'sheet-a4' : 'sheet-letter');
+    // For preview, scale down via transform
+    const scale = isA4 ? Math.min(1, 700 / (210 * MM_TO_PX)) : Math.min(1, 700 / (215.9 * MM_TO_PX));
+    sheet.style.transform = `scale(${scale})`;
+    sheet.style.transformOrigin = 'top left';
+    // wrap to allocate space
+    const wrap = document.createElement('div');
+    wrap.style.width = (isA4 ? 210 : 215.9) * MM_TO_PX * scale + 'px';
+    wrap.style.height = (isA4 ? 297 : 279.4) * MM_TO_PX * scale + 'px';
+    wrap.style.position = 'relative';
+    wrap.appendChild(sheet);
+    stack.appendChild(wrap);
+
+    const inner = document.createElement('div');
+    inner.style.position = 'absolute';
+    inner.style.left = (margin * MM_TO_PX) + 'px';
+    inner.style.top = (margin * MM_TO_PX) + 'px';
+    inner.style.width = ((isA4 ? 210 : 215.9) - 2 * margin) * MM_TO_PX + 'px';
+    inner.style.height = ((isA4 ? 297 : 279.4) - 2 * margin) * MM_TO_PX + 'px';
+    sheet.appendChild(inner);
+
+    const cards = [];
+    page.forEach(it => {
+      const card = buildLabelCard(it.row);
+      card.style.position = 'absolute';
+      card.style.left = (it.x * MM_TO_PX) + 'px';
+      card.style.top = (it.y * MM_TO_PX) + 'px';
+      inner.appendChild(card);
+      cards.push(card);
+    });
+    requestAnimationFrame(() => cards.forEach(c => c._fit && c._fit()));
+
+    const pn = document.createElement('div');
+    pn.className = 'sheet-page-num';
+    pn.textContent = `PAGE ${pgIdx + 1} / ${pages.length} · ${page.length} LABELS`;
+    sheet.appendChild(pn);
+  });
+}
+
+/* ---- META / CAPACITY ---- */
+function updateMeta() {
+  el('usedCount').textContent = state.used.size;
+  const totalLabels = state.rows.reduce((s, r) => s + Math.max(1, r.copies || 1), 0);
+  el('queueCount').textContent = totalLabels;
+  const dims = getActiveDims();
+  el('previewInfo').textContent = `${dims.w} × ${dims.h} mm · default format`;
+  updateCapacityHint();
+}
+
+function updateCapacityHint() {
+  const isA4 = el('pageSize').value === 'a4';
+  const pageW = isA4 ? 210 : 215.9;
+  const pageH = isA4 ? 297 : 279.4;
+  const margin = parseFloat(el('pageMargin').value) || 8;
+  const gapH = parseFloat(el('gapH').value) || 0;
+  const gapV = parseFloat(el('gapV').value) || 0;
+  const dims = getActiveDims();
+  const innerW = pageW - 2 * margin;
+  const innerH = pageH - 2 * margin;
+  const cols = Math.max(0, Math.floor((innerW + gapH) / (dims.w + gapH)));
+  const rows = Math.max(0, Math.floor((innerH + gapV) / (dims.h + gapV)));
+  const items = expandQueue();
+  const pages = paginate(pageW, pageH, margin, gapH, gapV, items);
+  el('capacityHint').innerHTML = `≈ <b>${cols * rows}</b> default labels per page (${cols}×${rows}) · ${items.length} queued → <b>${pages.length}</b> page${pages.length === 1 ? '' : 's'}`;
+}
+
+/* ---- IMPORT / EXPORT ---- */
+function buildExport() {
+  return {
+    schema: SCHEMA_VERSION,
+    exported: new Date().toISOString(),
+    items: Object.values(state.registry).sort((a, b) =>
+      (a.created || '').localeCompare(b.created || '')
+    ),
+  };
+}
+
+function exportJson() {
+  const data = buildExport();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  downloadBlob(blob, `gridfinity-inventory-${tsForFilename()}.json`);
+}
+
+function exportCsv() {
+  const items = buildExport().items;
+  const header = ['id','line1','line2','line3','qr','qr_payload','label_format','created','updated'];
+  const rows = items.map(it => [
+    it.id,
+    (it.lines && it.lines[0]) || '',
+    (it.lines && it.lines[1]) || '',
+    (it.lines && it.lines[2]) || '',
+    it.qr ? '1' : '0',
+    it.qr_payload || '',
+    it.label_format || '',
+    it.created || '',
+    it.updated || '',
+  ].map(csvCell).join(','));
+  const csv = [header.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  downloadBlob(blob, `gridfinity-inventory-${tsForFilename()}.csv`);
+}
+
+function csvCell(v) {
+  v = String(v ?? '');
+  if (/[",\n]/.test(v)) return '"' + v.replace(/"/g, '""') + '"';
+  return v;
+}
+function tsForFilename() {
+  const d = new Date();
+  return d.toISOString().replace(/[:.]/g, '-').slice(0, 19);
+}
+function downloadBlob(blob, name) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function importJson(file) {
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!data.schema || !data.schema.startsWith('gridfinity-inventory/')) {
+      alert('Not a gridfinity-inventory file. Schema missing.');
+      return;
+    }
+    if (!Array.isArray(data.items)) {
+      alert('No items[] array found.');
+      return;
+    }
+    let added = 0, skipped = 0;
+    for (const it of data.items) {
+      if (!it.id) continue;
+      if (state.registry[it.id]) {
+        skipped++;
+        continue;
+      }
+      state.registry[it.id] = {
+        id: it.id,
+        lines: it.lines || [],
+        qr: it.qr !== false,
+        qr_payload: it.qr_payload || it.id,
+        label_format: it.label_format || 'gfBox',
+        created: it.created || new Date().toISOString(),
+        updated: it.updated || new Date().toISOString(),
+      };
+      state.used.add(it.id);
+      added++;
+    }
+    await persistUsed();
+    await persistRegistry();
+    alert(`Import complete.\nAdded: ${added}\nSkipped (already exist): ${skipped}\n\nIDs are reserved against re-issue. Use "Reset Everything" to start over.`);
+    updateMeta();
+  } catch (e) {
+    alert('Import failed: ' + e.message);
+  }
+}
+
+/* ---- WIRING ---- */
+function toggleUrlField() {
+  el('urlPrefixField').style.display = el('qrMode').value === 'url' ? '' : 'none';
+}
+
+function renderAll() {
+  renderPresets();
+  renderTable();
+  renderPreview();
+  updateMeta();
+}
+
+function setupListeners() {
+  el('customW').addEventListener('input', () => {
+    state.customW = parseFloat(el('customW').value) || null;
+    persistConfig(); schedulePreview(); updateMeta();
+  });
+  el('customH').addEventListener('input', () => {
+    state.customH = parseFloat(el('customH').value) || null;
+    persistConfig(); schedulePreview(); updateMeta();
+  });
+  el('qrMode').addEventListener('change', () => {
+    toggleUrlField();
+    state.rows.forEach(logRow);
+    persistConfig();
+    schedulePreview();
+  });
+  el('urlPrefix').addEventListener('input', () => {
+    state.rows.forEach(logRow);
+    persistConfig();
+    schedulePreview();
+  });
+  el('pageSize').addEventListener('change', () => { persistConfig(); schedulePreview(); updateMeta(); });
+  el('pageMargin').addEventListener('input', () => { persistConfig(); schedulePreview(); updateMeta(); });
+  el('gapH').addEventListener('input', () => { persistConfig(); schedulePreview(); updateMeta(); });
+  el('gapV').addEventListener('input', () => { persistConfig(); schedulePreview(); updateMeta(); });
+  el('cutMarks').addEventListener('change', () => { persistConfig(); schedulePreview(); });
+
+  el('addRowBtn').addEventListener('click', () => addRow());
+  el('addBlankRowsBtn').addEventListener('click', async () => {
+    for (let i = 0; i < 5; i++) await addRow();
+  });
+  el('dupSelectedBtn').addEventListener('click', async () => {
+    const sel = state.rows.filter(r => r.selected).map(r => r.uid);
+    for (const uid of sel) await duplicateRow(uid);
+  });
+  el('delSelectedBtn').addEventListener('click', () => {
+    if (!confirm('Delete selected rows? IDs will remain reserved (not reusable).')) return;
+    state.rows = state.rows.filter(r => !r.selected);
+    persistRows(); renderAll();
+  });
+  el('selectAll').addEventListener('change', e => {
+    state.rows.forEach(r => r.selected = e.target.checked);
+    renderTable();
+  });
+  el('printBatchBtn').addEventListener('click', printBatchToTape);
+  el('reissueBtn').addEventListener('click', async () => {
+    if (!confirm('Reissue new IDs for all rows? Old IDs stay reserved (never reused).')) return;
+    for (const row of state.rows) {
+      row.id = await issueId();
+      row.created = new Date().toISOString();
+      logRow(row);
+    }
+    await persistRows();
+    renderAll();
+  });
+  el('clearTableBtn').addEventListener('click', () => {
+    if (!confirm('Clear all table rows? IDs stay in registry & remain reserved.')) return;
+    state.rows = [];
+    persistRows(); renderAll();
+  });
+
+  el('printBtn').addEventListener('click', doPrint);
+
+  el('exportJsonBtn').addEventListener('click', exportJson);
+  el('exportCsvBtn').addEventListener('click', exportCsv);
+  el('importBtn').addEventListener('click', () => el('importFile').click());
+  el('importFile').addEventListener('change', e => {
+    if (e.target.files && e.target.files[0]) importJson(e.target.files[0]);
+    e.target.value = '';
+  });
+  el('resetBtn').addEventListener('click', async () => {
+    if (!confirm('Reset EVERYTHING — all rows, all issued IDs, all registry data. Continue?')) return;
+    if (!confirm('Really? Issued IDs will be available for reuse. This cannot be undone.')) return;
+    state.rows = []; state.used = new Set(); state.registry = {};
+    await persistUsed(); await persistRegistry(); await persistRows();
+    renderAll();
+  });
+
+  // Tabs
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      state.previewTab = t.dataset.tab;
+      renderPreview();
+    });
+  });
+}
+
+/* ---- TAPE PRINTING (Brother PT-P700 via Pi backend) ----
+
+   PIXEL GEOMETRY (PT-P700 @ 180 DPI):
+     12mm tape → tape physical height = 85px (12mm × 180/25.4)
+                 printable area height = 70px (reported by ptouch-print --info)
+                 → ~7.5px (1mm) safety dead zone on top and bottom edges
+     18mm tape → printable = 112px
+     24mm tape → printable = 128px
+
+   For chain-mode printing (multiple labels in one job, auto-cut between
+   them), the cutter needs ~3mm of clear tape on each side of every cut.
+   We respect that by inset cut-clearance on the left and right of each
+   label's content area.
+
+   The tape canvas dimensions ARE the printable area (the printer adds the
+   12-25mm front leader automatically). What we render is what hits paper.
+*/
+
+const TAPE_DPI = 180;
+const TAPE_HEIGHTS_PX = {  // printable area height in pixels for each tape width
+  6: 32, 9: 50, 12: 70, 18: 112, 24: 128
+};
+// Safe inset (in mm) we leave on each end of the printable length so the
+// cutter has clear room. Brother's small-margin spec is 4mm minimum.
+// This applies to both single and batch (chain+precut) printing.
+const TAPE_CUT_CLEAR_MM = 4.0;
+// Vertical inset (in mm) inside the printable area. ptouch-print already
+// reports just the printable area, so 0.3mm is plenty of safety to keep
+// content away from any roller/cutter edge mishaps.
+const TAPE_EDGE_SAFE_MM = 0.3;
+
+function mmToTapePx(mm) {
+  return Math.round(mm * TAPE_DPI / 25.4);
+}
+
+function renderRowToTapePng(row, tapeWidthMm = 12, maxPrintPx = null) {
+  return new Promise((resolve, reject) => {
+    // Use the printer-reported max_print_px if we have it, otherwise fall
+    // back to a table of known values per tape width. Different printers
+    // report slightly different printable heights for the same tape width
+    // (PT-P700 says 70px for 12mm, PT-H500 says 76px).
+    const tapeHeightPx = maxPrintPx || TAPE_HEIGHTS_PX[tapeWidthMm] || 70;
+    const dims = getRowDims(row);
+
+    // Canvas is exactly the label's mm length at 180 DPI. The first label
+    // of a print job will get a 25mm leader auto-added by the printer;
+    // subsequent labels in a chain print only have ~4mm gap between them.
+    const tapeLengthPx = mmToTapePx(dims.w);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = tapeLengthPx;
+    canvas.height = tapeHeightPx;
+    const ctx = canvas.getContext('2d');
+
+    // White (or tape-color) background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#000000';
+
+    // ---- SAFE ZONES ----
+    // Horizontal: insets on each end for cut clearance. The cutter
+    // physically needs ~3mm of clear tape to avoid clipping content.
+    const cutClearPx = mmToTapePx(TAPE_CUT_CLEAR_MM);
+    // Vertical: tiny inset so we never butt content against the top/bottom
+    // of the printable area (the dead zone above/below that is the tape's
+    // unprintable margin).
+    const edgeSafePx = mmToTapePx(TAPE_EDGE_SAFE_MM);
+
+    // Inner content rectangle — this is what we actually draw inside
+    const contentLeft = cutClearPx;
+    const contentRight = tapeLengthPx - cutClearPx;
+    const contentTop = edgeSafePx;
+    const contentBottom = tapeHeightPx - edgeSafePx;
+    const contentWidth = contentRight - contentLeft;
+    const contentHeight = contentBottom - contentTop;
+
+    // ---- QR (right side, full content height, square) ----
+    const interGapPx = mmToTapePx(0.8); // 0.8mm gap between text and QR
+    const qrSidePx = row.qr ? contentHeight : 0;
+    const qrLeftPx = row.qr ? (contentRight - qrSidePx) : contentRight;
+
+    // ---- Text box (left side of content area, up to QR) ----
+    const textLeftPx = contentLeft;
+    const textRightPx = row.qr ? (qrLeftPx - interGapPx) : contentRight;
+    const textWidthPx = textRightPx - textLeftPx;
+    const textTopPx = contentTop;
+    const textHeightPx = contentHeight;
+
+    if (textWidthPx <= 0) {
+      reject(new Error('Label too small for QR + text at this tape width'));
+      return;
+    }
+
+    // Build line list — match buildLabelCard behavior
+    const lines = [];
+    if (row.line1 && row.line1.trim()) lines.push({ text: row.line1, weight: 1.0, font: '900 Xpx Archivo', upper: true });
+    if (row.line2 && row.line2.trim()) lines.push({ text: row.line2, weight: 0.62, font: '600 Xpx Archivo', upper: false });
+    if (row.line3 && row.line3.trim()) lines.push({ text: row.line3, weight: 0.50, font: '500 Xpx "JetBrains Mono"', upper: true });
+    if (lines.length === 0) {
+      lines.push({ text: row.id || '?????', weight: 1.0, font: '900 Xpx Archivo', upper: true });
+    }
+
+    // Auto-fit each line within the text box
+    const totalWeight = lines.reduce((s, l) => s + l.weight, 0);
+    const fittedLines = lines.map(line => {
+      const allocH = (line.weight / totalWeight) * textHeightPx;
+      let lo = 4, hi = textHeightPx * 2, best = lo;
+      const text = line.upper ? line.text.toUpperCase() : line.text;
+      for (let i = 0; i < 22; i++) {
+        const mid = (lo + hi) / 2;
+        ctx.font = line.font.replace('X', mid);
+        const m = ctx.measureText(text);
+        const ascent = m.actualBoundingBoxAscent || mid * 0.8;
+        const descent = m.actualBoundingBoxDescent || mid * 0.2;
+        const h = ascent + descent;
+        if (m.width <= textWidthPx && h <= allocH) {
+          best = mid;
+          lo = mid;
+        } else {
+          hi = mid;
+        }
+      }
+      return { text, font: line.font.replace('X', best), height: best };
+    });
+
+    // Draw stacked vertically, centered in text box
+    const totalDrawnH = fittedLines.reduce((s, l) => s + l.height, 0);
+    let yCursor = textTopPx + (textHeightPx - totalDrawnH) / 2;
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'center';
+    for (const fl of fittedLines) {
+      ctx.font = fl.font;
+      ctx.fillText(fl.text, textLeftPx + textWidthPx / 2, yCursor);
+      yCursor += fl.height;
+    }
+
+    const finalize = () => {
+      // Threshold to pure 1-bit black/white for thermal head
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const d = imgData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const v = (d[i] + d[i+1] + d[i+2]) / 3;
+        const bw = v < 200 ? 0 : 255;
+        d[i] = d[i+1] = d[i+2] = bw;
+        d[i+3] = 255;
+      }
+      ctx.putImageData(imgData, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+
+    if (row.qr) {
+      const payload = buildQrPayload(row);
+      const tmp = document.createElement('div');
+      tmp.style.cssText = 'position:absolute;left:-99999px;top:-99999px;';
+      document.body.appendChild(tmp);
+      try {
+        new QRCode(tmp, {
+          text: payload || ' ',
+          width: qrSidePx,
+          height: qrSidePx,
+          correctLevel: QRCode.CorrectLevel.M,
+        });
+        const qrCanvas = tmp.querySelector('canvas');
+        const qrImg = tmp.querySelector('img');
+        const drawQr = (src) => {
+          ctx.drawImage(src, qrLeftPx, contentTop, qrSidePx, qrSidePx);
+          document.body.removeChild(tmp);
+          finalize();
+        };
+        if (qrCanvas) {
+          drawQr(qrCanvas);
+        } else if (qrImg) {
+          const img = new Image();
+          img.onload = () => drawQr(img);
+          img.onerror = () => { document.body.removeChild(tmp); reject(new Error('QR render failed')); };
+          img.src = qrImg.src;
+        } else {
+          document.body.removeChild(tmp);
+          finalize();
+        }
+      } catch (e) {
+        try { document.body.removeChild(tmp); } catch {}
+        reject(e);
+      }
+    } else {
+      finalize();
+    }
+  });
+}
+
+async function printRowToTape(uidStr) {
+  const row = state.rows.find(r => r.uid === uidStr);
+  if (!row) return;
+
+  // Check printer status first
+  let status;
+  try {
+    const r = await fetch('/api/printer/status');
+    status = await r.json();
+  } catch (e) {
+    alert('Cannot reach printer endpoint. Is the backend running?');
+    return;
+  }
+
+  if (!status.connected) {
+    const detail = status.error || status.raw || 'unknown';
+    alert(`Printer not connected.\n\n${detail}\n\nMake sure:\n• PT-P700 is plugged into the Pi via USB\n• Power is on\n• The PLite green LED is OFF (hold PLite for 2 sec to toggle)\n• Tape cassette is installed`);
+    return;
+  }
+
+  const tapeWidth = status.tape_width_mm || 12;
+  const copies = Math.max(1, parseInt(row.copies || 1));
+  const confirmMsg = `Print to ${status.model || 'tape printer'}?\n` +
+                     `• Tape: ${tapeWidth}mm\n` +
+                     `• Copies: ${copies}\n` +
+                     `• Content: ${row.line1 || row.id}`;
+  if (!confirm(confirmMsg)) return;
+
+  let pngDataUrl;
+  try {
+    pngDataUrl = await renderRowToTapePng(row, tapeWidth, status.max_print_px);
+  } catch (e) {
+    alert('Failed to render label: ' + e.message);
+    return;
+  }
+
+  // Show a "printing..." indicator
+  const btn = document.querySelector(`tr[data-uid="${uidStr}"] .print-tape-btn`);
+  const originalText = btn ? btn.textContent : null;
+  if (btn) { btn.textContent = '⌛'; btn.disabled = true; }
+
+  try {
+    const resp = await fetch('/api/print', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        png_base64: pngDataUrl.split(',')[1],
+        copies: copies,
+      }),
+    });
+    const result = await resp.json();
+    if (!result.ok) {
+      alert(`Print failed:\n${result.error || 'unknown error'}\n\n${JSON.stringify(result.detail || result.results || {}, null, 2)}`);
+    } else {
+      if (btn) { btn.textContent = '✓'; setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 1500); }
+      return;
+    }
+  } catch (e) {
+    alert('Network error sending to printer: ' + e.message);
+  } finally {
+    if (btn && btn.textContent === '⌛') {
+      btn.textContent = originalText;
+      btn.disabled = false;
+    }
+  }
+}
+
+/* ---- BATCH TAPE PRINTING (chain mode) ----
+   Stitch multiple selected rows into a SINGLE long canvas, send as one
+   ptouch-print job. Result: one 25mm leader for the whole batch, not one
+   per label. The printer's auto-cutter still cuts between labels because
+   we feed it as one image with cut-clearance gaps between labels.
+
+   Between each label we draw a small dotted vertical line as a visual
+   scissor guide in case the auto-cut is disabled or alignment slips.
+
+   Labels of different lengths/sizes are allowed in one batch — they all
+   share the same tape width but can have different mm-lengths. */
+
+function renderBatchToTapePng(rows, tapeWidthMm = 12, maxPrintPx = null) {
+  return new Promise(async (resolve, reject) => {
+    if (!rows.length) return reject(new Error('no rows in batch'));
+
+    // Generate each label's PNG individually (data URLs)
+    const labelImages = [];
+    for (const row of rows) {
+      try {
+        const url = await renderRowToTapePng(row, tapeWidthMm, maxPrintPx);
+        labelImages.push({ row, url });
+      } catch (e) {
+        return reject(new Error(`Failed to render ${row.id}: ${e.message}`));
+      }
+    }
+
+    // Load all images to measure them
+    const loaded = [];
+    for (const li of labelImages) {
+      const img = await new Promise((res, rej) => {
+        const i = new Image();
+        i.onload = () => res(i);
+        i.onerror = () => rej(new Error('image load failed'));
+        i.src = li.url;
+      });
+      loaded.push({ ...li, img });
+    }
+
+    // Tape height in pixels (printable area) — match what each label was
+    // rendered at so they stack correctly
+    const tapeHeightPx = maxPrintPx || TAPE_HEIGHTS_PX[tapeWidthMm] || 70;
+    // Gap between adjacent labels — minimal so auto-cutter has clear tape
+    // Each label already has 3mm cut-clearance on its own sides, so the
+    // gap between labels is just air. Use 0 - the existing 3mm + 3mm
+    // between adjacent labels = 6mm of clear cut zone, which is plenty.
+    const interLabelGapPx = 0;
+
+    // Optional scissor-guide dotted line at each boundary
+    const drawGuides = true;
+
+    const totalLengthPx = loaded.reduce((s, l) => s + l.img.width, 0)
+                       + interLabelGapPx * (loaded.length - 1);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = totalLengthPx;
+    canvas.height = tapeHeightPx;
+    const ctx = canvas.getContext('2d');
+
+    // White background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw each label at its position
+    let xCursor = 0;
+    for (let i = 0; i < loaded.length; i++) {
+      const li = loaded[i];
+      ctx.drawImage(li.img, xCursor, 0);
+
+      // Tiny tick marks at the top/bottom of the boundary between labels
+      // — visible only as a scissor guide if auto-cut misses
+      if (drawGuides && i < loaded.length - 1) {
+        const boundaryX = xCursor + li.img.width + interLabelGapPx / 2;
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(boundaryX - 0.5, 0, 1, 2);                     // top tick
+        ctx.fillRect(boundaryX - 0.5, tapeHeightPx - 2, 1, 2);      // bottom tick
+      }
+
+      xCursor += li.img.width + interLabelGapPx;
+    }
+
+    // Final 1-bit threshold
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const d = imgData.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const v = (d[i] + d[i+1] + d[i+2]) / 3;
+      const bw = v < 200 ? 0 : 255;
+      d[i] = d[i+1] = d[i+2] = bw;
+      d[i+3] = 255;
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    resolve(canvas.toDataURL('image/png'));
+  });
+}
+
+async function printBatchToTape() {
+  // Gather selected rows in table order
+  const selected = state.rows.filter(r => r.selected);
+  if (selected.length === 0) {
+    alert('No rows selected. Check the boxes in the leftmost column, then try again.');
+    return;
+  }
+
+  // Expand by Copies field
+  const expanded = [];
+  for (const row of selected) {
+    const copies = Math.max(1, parseInt(row.copies || 1));
+    for (let i = 0; i < copies; i++) expanded.push(row);
+  }
+
+  // Check printer
+  let status;
+  try {
+    const r = await fetch('/api/printer/status');
+    status = await r.json();
+  } catch (e) {
+    alert('Cannot reach printer endpoint. Is the backend running?');
+    return;
+  }
+  if (!status.connected) {
+    const detail = status.hint || status.error || status.raw || 'unknown';
+    alert(`Printer not connected.\n\n${detail}`);
+    return;
+  }
+  const tapeWidth = status.tape_width_mm || 12;
+
+  // Estimate tape usage so user can decide
+  const totalContentMm = expanded.reduce((s, r) => s + getRowDims(r).w, 0);
+  const leaderMm = 25;
+  const totalTapeMm = totalContentMm + leaderMm;
+  const savedVsIndividualMm = (expanded.length - 1) * leaderMm;
+
+  const confirmMsg =
+    `Print ${expanded.length} labels as ONE batch on ${status.model || 'tape printer'}?\n\n` +
+    `• Tape: ${tapeWidth}mm\n` +
+    `• Total tape used: ~${totalTapeMm.toFixed(0)}mm (${(totalTapeMm / 25.4).toFixed(1)}")\n` +
+    `• Savings vs printing individually: ~${savedVsIndividualMm}mm of leader tape`;
+
+  if (!confirm(confirmMsg)) return;
+
+  // Render each label as its own PNG (separate so ptouch-print cuts between them)
+  const btn = el('printBatchBtn');
+  const originalText = btn.textContent;
+  btn.textContent = '⌛ Rendering...';
+  btn.disabled = true;
+
+  let pngList = [];
+  try {
+    for (const row of expanded) {
+      const url = await renderRowToTapePng(row, tapeWidth, status.max_print_px);
+      pngList.push(url.split(',')[1]);  // strip data: prefix
+    }
+  } catch (e) {
+    alert('Failed to render batch: ' + e.message);
+    btn.textContent = originalText;
+    btn.disabled = false;
+    return;
+  }
+
+  btn.textContent = '⌛ Printing...';
+
+  try {
+    const resp = await fetch('/api/print', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pngs_base64: pngList,
+        copies: 1,
+      }),
+    });
+    const result = await resp.json();
+    if (!result.ok) {
+      alert(`Batch print failed:\n${result.error || 'unknown error'}\n\n${JSON.stringify(result.detail || result.results || {}, null, 2)}`);
+    } else {
+      btn.textContent = '✓ Printed';
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }, 2000);
+      return;
+    }
+  } catch (e) {
+    alert('Network error during batch print: ' + e.message);
+  }
+
+  btn.textContent = originalText;
+  btn.disabled = false;
+}
+
+/* ---- PRINT ---- */
+function doPrint() {
+  const isA4 = el('pageSize').value === 'a4';
+  const pageW = isA4 ? 210 : 215.9;
+  const pageH = isA4 ? 297 : 279.4;
+  const margin = parseFloat(el('pageMargin').value) || 8;
+  const gapH = parseFloat(el('gapH').value) || 0;
+  const gapV = parseFloat(el('gapV').value) || 0;
+
+  const items = expandQueue();
+  if (items.length === 0) { alert('Queue is empty.'); return; }
+  const pages = paginate(pageW, pageH, margin, gapH, gapV, items);
+
+  document.documentElement.style.setProperty('--page-size', isA4 ? 'A4' : 'letter');
+
+  const area = el('print-area');
+  area.innerHTML = '';
+
+  const cards = [];
+  pages.forEach((page) => {
+    const sheet = document.createElement('div');
+    sheet.className = 'sheet ' + (isA4 ? 'sheet-a4' : 'sheet-letter');
+    sheet.style.transform = 'none';
+    const inner = document.createElement('div');
+    inner.style.position = 'absolute';
+    inner.style.left = (margin * MM_TO_PX) + 'px';
+    inner.style.top = (margin * MM_TO_PX) + 'px';
+    inner.style.width = (pageW - 2 * margin) * MM_TO_PX + 'px';
+    inner.style.height = (pageH - 2 * margin) * MM_TO_PX + 'px';
+    sheet.appendChild(inner);
+
+    page.forEach(it => {
+      const card = buildLabelCard(it.row);
+      if (!el('cutMarks').checked) {
+        card.style.border = 'none';
+      }
+      card.style.position = 'absolute';
+      card.style.left = (it.x * MM_TO_PX) + 'px';
+      card.style.top = (it.y * MM_TO_PX) + 'px';
+      inner.appendChild(card);
+      cards.push(card);
+    });
+    area.appendChild(sheet);
+  });
+
+  // Fit text then print
+  requestAnimationFrame(() => {
+    cards.forEach(c => c._fit && c._fit());
+    setTimeout(() => {
+      window.print();
+    }, 80);
+  });
+}
+
+/* ---- INIT ---- */
+(async function init() {
+  setupListeners();
+  toggleUrlField();
+  updateBackendIndicator();
+  await loadAll();
+  renderAll();
+  // Probe for the Pi backend API. If found, upgrade storage and reload data.
+  _upgradeToApiIfAvailable();
+})();
+</script>
+</body>
+</html>
