@@ -81,6 +81,11 @@ if ! visudo -c -q -f /etc/sudoers.d/gridfinity-update 2>/dev/null; then
   rm -f /etc/sudoers.d/gridfinity-update
 fi
 
+echo "==> Clearing update cache"
+# The cached update-check state is now stale; remove it so the next
+# check returns fresh data.
+rm -f /var/lib/gridfinity/update-cache.json || true
+
 echo "==> Restarting service"
 systemctl restart gridfinity-backend
 sleep 2

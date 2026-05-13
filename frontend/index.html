@@ -493,8 +493,34 @@ async function runUpdate() {
   } catch(e) {}
 
   // Update check (cached — doesn't hit GitHub on every load, runs from cache
-  // if fresh-enough, refreshes otherwise)
-  checkForUpdates(false, true);
+  // if fresh-enough, refreshes otherwise). If the cached "current_version"
+  // disagrees with what /api/health just reported, force-refresh — that means
+  // someone updated the Pi out-of-band (e.g. ran update.sh manually) and the
+  // cache is stale.
+  try {
+    const liveVersion = document.getElementById('version').textContent.replace(/^v/, '');
+    const initialCheck = await fetch('/api/system/update-check').then(r => r.json());
+    const cachedCurrent = initialCheck.current_version;
+    if (cachedCurrent && liveVersion && cachedCurrent !== liveVersion) {
+      // Stale cache — refresh
+      checkForUpdates(true, true);
+    } else {
+      // Apply the result we already fetched
+      const banner = document.getElementById('updateBanner');
+      if (initialCheck.available) {
+        const dismissed = (() => { try { return localStorage.getItem(UPDATE_DISMISS_KEY); } catch(e){ return null; } })();
+        if (dismissed !== initialCheck.latest_hash) {
+          banner.classList.remove('hidden');
+          banner.dataset.hash = initialCheck.latest_hash;
+          const cur = initialCheck.current_version || 'current';
+          const next = initialCheck.latest_version || 'newer';
+          const commitInfo = initialCheck.commits_behind > 1 ? ` (${initialCheck.commits_behind} commits)` : '';
+          document.getElementById('updateVersionText').textContent =
+            `v${cur} → v${next}${commitInfo}. Click below to install.`;
+        }
+      }
+    }
+  } catch(e) {}
 
   // WiFi onboarding logic:
   // Show banner only if (a) wifi is available, (b) NOT already on wifi, (c) user hasn't skipped
