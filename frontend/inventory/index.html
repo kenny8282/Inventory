@@ -1135,9 +1135,11 @@ function stopScanner() {
    The targeting box occupies the middle 44% of the video (28% margin all sides).
    Status text and a progress arc give live feedback. */
 
-const DWELL_MS = 500;           // ms a QR must be in the box to auto-lock
-const DWELL_GRACE_MS = 280;     // how long the dwell can survive without a fresh detection
-const TARGET_BOX_INSET = 0.24;  // 24% margin → 52% center box
+const DWELL_MS = 250;           // ms a QR must be in the box to auto-lock (was 500 — half time)
+const DWELL_GRACE_MS = 400;     // how long the dwell can survive without a fresh detection
+const TARGET_BOX_INSET = 0.18;  // 18% margin -> 64% center box (was 24% -> 52%, bigger target)
+const MAX_DETECT_ATTEMPTS = 3;  // multi-QR attempts per frame (was 6 — half the CPU per frame)
+const SCAN_DOWNSCALE_MAX_DIM = 960; // process frames at <=960px wide for speed
 
 /* Returns true if a QR's center is inside the targeting box (in video coords) */
 function qrInTargetBox(code, videoW, videoH) {
@@ -1219,9 +1221,16 @@ function scanFrame() {
     return;
   }
 
+  // Downsample the frame to SCAN_DOWNSCALE_MAX_DIM on the long edge before
+  // running jsQR. A 1920x1080 capture costs ~8MB to copy with getImageData
+  // and is slow to scan; 960x540 is 4x faster and still detects fine for QRs
+  // larger than ~80px on screen (the targeting box is ~64% of the frame, so
+  // a label printed at half tape width still resolves cleanly).
+  const longEdge = Math.max(v.videoWidth, v.videoHeight);
+  const scale = longEdge > SCAN_DOWNSCALE_MAX_DIM ? SCAN_DOWNSCALE_MAX_DIM / longEdge : 1;
   const canvas = s.canvas;
-  canvas.width = v.videoWidth;
-  canvas.height = v.videoHeight;
+  canvas.width  = Math.round(v.videoWidth  * scale);
+  canvas.height = Math.round(v.videoHeight * scale);
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
 
@@ -1233,7 +1242,7 @@ function scanFrame() {
     return;
   }
 
-  const codes = detectAllQrs(imageData, 6);
+  const codes = detectAllQrs(imageData, MAX_DETECT_ATTEMPTS);
   // Filter to ones inside the targeting box, dedupe by normalized ID
   const inBox = [];
   const seen = new Set();
@@ -1762,10 +1771,13 @@ function scanBinFrame() {
     return;
   }
 
-  s.canvas.width = s.video.videoWidth;
-  s.canvas.height = s.video.videoHeight;
+  // Downsample for performance (same trick as the main scanner)
+  const longEdge = Math.max(s.video.videoWidth, s.video.videoHeight);
+  const scale = longEdge > SCAN_DOWNSCALE_MAX_DIM ? SCAN_DOWNSCALE_MAX_DIM / longEdge : 1;
+  s.canvas.width  = Math.round(s.video.videoWidth  * scale);
+  s.canvas.height = Math.round(s.video.videoHeight * scale);
   const ctx = s.canvas.getContext('2d', { willReadFrequently: true });
-  ctx.drawImage(s.video, 0, 0);
+  ctx.drawImage(s.video, 0, 0, s.canvas.width, s.canvas.height);
 
   let imageData;
   try {
@@ -1775,7 +1787,7 @@ function scanBinFrame() {
     return;
   }
 
-  const codes = detectAllQrs(imageData, 6);
+  const codes = detectAllQrs(imageData, MAX_DETECT_ATTEMPTS);
   // Filter to ones in the targeting box, dedupe, exclude the source container
   const inBox = [];
   const seen = new Set();

@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.10.1"  # captive portal: nginx serves /wifi/ on HTTP for AP-mode probes
+APP_VERSION = "1.10.2"  # QR scanner: downsample frames + faster dwell + bigger target box
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
