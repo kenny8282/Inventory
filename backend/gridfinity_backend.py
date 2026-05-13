@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.7.1"  # test: verify update pipeline end-to-end
+APP_VERSION = "1.7.2"  # test: verify update pipeline (forward push from 1.7.1)
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
