@@ -83,9 +83,11 @@ cat > /etc/comitup.conf <<'EOF'
 # Gridfinity comitup configuration
 # Edit this file to customize AP behavior; rerun comitup-cli if needed.
 
-# AP SSID prefix. Comitup appends a per-device suffix automatically based
-# on hardware ID, so two devices won't collide.
-ap_name: Gridfinity-<nnn>
+# AP SSID. Plain "Gridfinity-Setup" - simple and friendly. Comitup's <nnn>
+# suffix is supported (last 4 of MAC) but we omit it for simplicity.
+# If two Pis end up nearby in AP mode simultaneously, change one to
+# "Gridfinity-Setup-<nnn>" to disambiguate.
+ap_name: Gridfinity-Setup
 
 # AP password: blank = open network (only on during setup, then disappears)
 ap_password:

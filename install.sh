@@ -23,20 +23,38 @@ REPO_BRANCH="${GRIDFINITY_REPO_BRANCH:-main}"
 INSTALL_DIR="/opt/gridfinity"
 DATA_DIR="/var/lib/gridfinity"
 WEB_DIR="/var/www/html"
-SERVICE_USER="${SUDO_USER:-$(whoami)}"
+# SERVICE_USER is set later after arg parsing (to support GRIDFINITY_USER env var)
 PTOUCH_REPO="https://github.com/clarkewd/ptouch-print.git"
 PTOUCH_BUILD_DIR="/tmp/ptouch-print-build"
 PYTHON_BIN="python3"
 
 # Parse args
 INSTALL_WIFI_BOOTSTRAP=1
+UNATTENDED=0
 for arg in "$@"; do
   case "$arg" in
     --no-bootstrap|--no-wifi-bootstrap)
       INSTALL_WIFI_BOOTSTRAP=0
       ;;
+    --unattended|-y)
+      UNATTENDED=1
+      ;;
   esac
 done
+
+# In unattended mode, mirror all output to a log file too.
+if [ "$UNATTENDED" = "1" ]; then
+  LOG_FILE="/var/log/gridfinity-install.log"
+  mkdir -p "$(dirname "$LOG_FILE")"
+  exec > >(tee -a "$LOG_FILE") 2>&1
+  echo "[$(date)] Unattended install starting (log: $LOG_FILE)"
+fi
+
+# Service user: prefer GRIDFINITY_USER (set by firstrun.sh), then SUDO_USER,
+# then whoami. Friends installing via the curl|bash one-liner from SSH get
+# their account name. Pre-flashed cards using firstrun.sh always use
+# 'gridfinity'.
+SERVICE_USER="${GRIDFINITY_USER:-${SUDO_USER:-$(whoami)}}"
 
 # Pretty output helpers
 RED=$'\033[31m'; GREEN=$'\033[32m'; YELLOW=$'\033[33m'; BLUE=$'\033[34m'; BOLD=$'\033[1m'; RESET=$'\033[0m'
@@ -53,7 +71,11 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 if [ "$SERVICE_USER" = "root" ]; then
-  fail "Don't run from a root login â€” sudo from a regular user account so the printer udev rule attaches to that user."
+  fail "Cannot install with SERVICE_USER=root. Run as a regular user with sudo, or set GRIDFINITY_USER=<username>."
+fi
+
+if ! id "$SERVICE_USER" >/dev/null 2>&1; then
+  fail "Service user '$SERVICE_USER' doesn't exist. Set GRIDFINITY_USER or run sudo as a real user."
 fi
 
 if [ ! -f /etc/debian_version ]; then

@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.8.1"  # verify update pipeline once more before fresh-Pi install
+APP_VERSION = "1.9.0"  # ship-ready: SD prep script, AP-mode bootstrap, gridfinity user
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
