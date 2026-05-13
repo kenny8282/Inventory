@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.7.5"  # test button-driven update with systemd-run
+APP_VERSION = "1.7.6"  # fix: remove NoNewPrivileges from service unit, simplify wifi sudoers
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
