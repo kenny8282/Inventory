@@ -24,7 +24,7 @@ INSTALL_DIR="/opt/gridfinity"
 DATA_DIR="/var/lib/gridfinity"
 WEB_DIR="/var/www/html"
 # SERVICE_USER is set later after arg parsing (to support GRIDFINITY_USER env var)
-PTOUCH_REPO="https://github.com/clarkewd/ptouch-print.git"
+PTOUCH_REPO="${PTOUCH_REPO_URL:-https://github.com/torbenwendt/ptouch-print.git}"
 PTOUCH_BUILD_DIR="/tmp/ptouch-print-build"
 PYTHON_BIN="python3"
 
@@ -49,6 +49,11 @@ if [ "$UNATTENDED" = "1" ]; then
   exec > >(tee -a "$LOG_FILE") 2>&1
   echo "[$(date)] Unattended install starting (log: $LOG_FILE)"
 fi
+
+# Never prompt for git credentials. If a clone needs auth, that's a bug â€” fail
+# loudly instead of hanging the curl|sudo pipe forever.
+export GIT_TERMINAL_PROMPT=0
+export GIT_ASKPASS=/bin/true
 
 # Service user: prefer GRIDFINITY_USER (set by firstrun.sh), then SUDO_USER,
 # then whoami. Friends installing via the curl|bash one-liner from SSH get
