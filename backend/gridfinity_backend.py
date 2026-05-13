@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.9.2"  # fix: clarkewd/ptouch-print is dead - use torbenwendt mirror
+APP_VERSION = "1.9.3"  # fix: add cmake + libgd-dev to apt list (ptouch-print needs them)
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
