@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.9.7"  # fix: comitup web_service config (was 'nm-cli', must be 'enabled')
+APP_VERSION = "1.9.8"  # fix: wifi_connect deletes conflicting profile first to avoid key-mgmt error
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
@@ -1007,7 +1007,13 @@ def wifi_saved():
 @app.route("/api/wifi/connect", methods=["POST"])
 def wifi_connect():
     """Connect to a WiFi network. Body: {ssid: str, password: str (optional for open)}.
-    The password is sent over HTTPS only. We never log or echo it."""
+    The password is sent over HTTPS only. We never log or echo it.
+
+    If a profile for this SSID already exists (e.g. a netplan-managed one from
+    initial OS setup, or a previous failed connect), we delete it first so that
+    nmcli builds a clean new profile. Otherwise nmcli can fail with cryptic
+    'key-mgmt property is missing' errors when its connect-arg form conflicts
+    with the existing profile's security settings."""
     ok, _reason = _wifi_available()
     if not ok:
         abort(400, description="WiFi not available on this device")
@@ -1022,7 +1028,22 @@ def wifi_connect():
     if password and (len(password) < 8 or len(password) > 128):
         abort(400, description="password length must be 8-128 chars (WPA requirement)")
 
-    # Build args. nmcli accepts spaces in ssid as a single arg.
+    # Pre-clean any existing profile for this SSID. Walk through all profiles
+    # and delete any whose stored 802-11-wireless.ssid matches.
+    list_r = _nmcli("-t", "-f", "NAME,TYPE", "connection", "show")
+    if list_r and list_r.returncode == 0:
+        for line in list_r.stdout.splitlines():
+            parts = line.split(":")
+            if len(parts) < 2: continue
+            profile_name, ctype = parts[0], parts[1]
+            if ctype != "802-11-wireless": continue
+            # Don't touch comitup's own AP profiles
+            if profile_name.startswith("comitup-"): continue
+            existing_ssid = _resolve_ssid_for_profile(profile_name)
+            if existing_ssid == ssid:
+                _nmcli("connection", "delete", profile_name, timeout=10)
+
+    # Now connect fresh. nmcli will build a new profile.
     args = ["device", "wifi", "connect", ssid]
     if password:
         args += ["password", password]
@@ -1038,6 +1059,8 @@ def wifi_connect():
             err = "Network not found in range"
         elif "Connection activation failed" in err:
             err = "Couldn't connect — wrong password or signal too weak"
+        elif "key-mgmt" in err:
+            err = "Couldn't configure network security — try again"
         return jsonify({"ok": False, "error": err}), 400
 
     return jsonify({"ok": True, "ssid": ssid})
