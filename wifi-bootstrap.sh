@@ -92,12 +92,12 @@ ap_name: Gridfinity-Setup
 # AP password: blank = open network (only on during setup, then disappears)
 ap_password:
 
-# The web_service setting is the NAME of a systemd unit comitup will
+# The web_service setting is the FULL systemd unit name comitup will
 # start when entering HOTSPOT mode and stop when leaving. The default
-# (and what we want) is comitup-web. Earlier versions of this script
-# mistakenly used 'enabled' and 'nm-cli' which crashed comitup with
-# "Unit name enabled is not valid" dbus errors.
-web_service: comitup-web
+# is comitup-web.service. Earlier values like 'enabled', 'nm-cli', or
+# bare 'comitup-web' (without .service) crash comitup with dbus errors
+# like "Unit name X is not valid".
+web_service: comitup-web.service
 
 # Verbose logs only when troubleshooting
 verbose: 0

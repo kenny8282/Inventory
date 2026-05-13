@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.9.9"  # fix: comitup web_service value (must be unit name, not 'enabled')
+APP_VERSION = "1.9.10"  # fix: comitup web_service needs full unit name (comitup-web.service)
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
