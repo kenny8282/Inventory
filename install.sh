@@ -24,7 +24,7 @@ INSTALL_DIR="/opt/gridfinity"
 DATA_DIR="/var/lib/gridfinity"
 WEB_DIR="/var/www/html"
 # SERVICE_USER is set later after arg parsing (to support GRIDFINITY_USER env var)
-PTOUCH_REPO="${PTOUCH_REPO_URL:-https://github.com/torbenwendt/ptouch-print.git}"
+PTOUCH_REPO="${PTOUCH_REPO_URL:-https://github.com/farixembedded/ptouch-print.git}"
 PTOUCH_BUILD_DIR="/tmp/ptouch-print-build"
 PYTHON_BIN="python3"
 
@@ -105,7 +105,7 @@ info "Installing system packages"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 apt-get install -y -qq --no-install-recommends \
-  git build-essential pkg-config cmake \
+  git build-essential pkg-config cmake gettext \
   libudev-dev libusb-1.0-0-dev libgd-dev \
   python3 python3-venv python3-pip \
   nginx openssl \
