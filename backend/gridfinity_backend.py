@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.7.3"  # test: button-driven update flow + cache auto-clear
+APP_VERSION = "1.7.4"  # use systemd-run to detach update.sh properly
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
@@ -1107,19 +1107,31 @@ def system_update_check():
 def system_update():
     """Run update.sh. The service will restart mid-call so the response
     may never reach the client — that's expected. The client should poll
-    /api/health afterwards to detect when it comes back up."""
+    /api/health afterwards to detect when it comes back up.
+
+    We use systemd-run to launch update.sh as a transient unit so it
+    survives the systemctl restart that update.sh itself triggers. If we
+    spawned with subprocess.Popen, update.sh would be a child of gunicorn,
+    and gunicorn dies when the service restarts — killing update.sh
+    half-way through (silent failure).
+    """
     if not Path(UPDATE_SCRIPT).exists():
         return jsonify({"ok": False, "error": "update.sh not present — run a fresh install"}), 500
 
-    # Spawn detached so we don't block on output. The script restarts the
-    # service which will kill us anyway, so just fire-and-forget.
+    # systemd-run --unit=... creates a transient service that's owned by
+    # systemd (PID 1), so it can outlive the gunicorn worker that requested it.
+    # --collect cleans up the unit after it finishes.
     try:
-        subprocess.Popen(
-            ["sudo", "-n", "bash", UPDATE_SCRIPT],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
+        r = subprocess.run(
+            ["sudo", "-n", "systemd-run",
+             "--unit=gridfinity-update-runner",
+             "--collect",
+             "--no-block",
+             "/bin/bash", UPDATE_SCRIPT],
+            capture_output=True, text=True, timeout=10,
         )
+        if r.returncode != 0:
+            return jsonify({"ok": False, "error": f"systemd-run failed: {r.stderr.strip()}"}), 500
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 

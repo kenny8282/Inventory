@@ -75,6 +75,7 @@ echo "==> Refreshing update-runner sudoers"
 cat > /etc/sudoers.d/gridfinity-update <<EOF
 $SERVICE_USER ALL=(ALL) NOPASSWD: /bin/bash $INSTALL_DIR/update.sh
 $SERVICE_USER ALL=(ALL) NOPASSWD: $INSTALL_DIR/update.sh
+$SERVICE_USER ALL=(ALL) NOPASSWD: /usr/bin/systemd-run --unit=gridfinity-update-runner --collect --no-block /bin/bash $INSTALL_DIR/update.sh
 EOF
 chmod 0440 /etc/sudoers.d/gridfinity-update
 if ! visudo -c -q -f /etc/sudoers.d/gridfinity-update 2>/dev/null; then

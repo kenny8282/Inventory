@@ -207,10 +207,13 @@ cp "$SRC_DIR/update.sh" "$INSTALL_DIR/update.sh"
 chmod +x "$INSTALL_DIR/update.sh"
 
 # Allow the service user to run update.sh as root without a password,
-# so the home page's "Update Now" button works.
+# so the home page's "Update Now" button works. We also need systemd-run
+# because that's how we detach update.sh from the gunicorn worker that
+# triggers it (otherwise the workers die mid-update and kill the script).
 cat > /etc/sudoers.d/gridfinity-update <<EOF
 $SERVICE_USER ALL=(ALL) NOPASSWD: /bin/bash $INSTALL_DIR/update.sh
 $SERVICE_USER ALL=(ALL) NOPASSWD: $INSTALL_DIR/update.sh
+$SERVICE_USER ALL=(ALL) NOPASSWD: /usr/bin/systemd-run --unit=gridfinity-update-runner --collect --no-block /bin/bash $INSTALL_DIR/update.sh
 EOF
 chmod 0440 /etc/sudoers.d/gridfinity-update
 if ! visudo -c -q -f /etc/sudoers.d/gridfinity-update 2>/dev/null; then
