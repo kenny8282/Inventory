@@ -2,7 +2,7 @@
 # Gridfinity SD-card preparation script
 # ----------------------------------------------------------------------------
 # Run this AFTER flashing Pi OS Lite (64-bit) to an SD card with Raspberry
-# Pi Imager. Don't bother setting anything in Imager's gear settings — this
+# Pi Imager. Don't bother setting anything in Imager's gear settings - this
 # script handles all of that, plus installs everything else.
 #
 # What it does:
@@ -52,13 +52,39 @@ Info "Locating SD card boot partition"
 if ($DriveLetter) {
     $candidateDrives = @($DriveLetter.TrimEnd(':') + ':')
 } else {
-    $candidateDrives = (Get-PSDrive -PSProvider FileSystem | Where-Object {
-        $_.Root -match '^[D-Z]:\\' -and (Test-Path "$($_.Root)cmdline.txt")
-    }).Root | ForEach-Object { $_.TrimEnd('\') }
+    # Get all filesystem drives, check each for cmdline.txt
+    $allFsDrives = Get-PSDrive -PSProvider FileSystem | Where-Object {
+        $_.Root -match '^[D-Z]:\\'
+    }
+    Write-Host "  Scanning drives: $(($allFsDrives | ForEach-Object { $_.Root }) -join ', ')"
+
+    $matchedDrives = @()
+    foreach ($d in $allFsDrives) {
+        if (Test-Path "$($d.Root)cmdline.txt") {
+            $matchedDrives += $d.Root.TrimEnd('\')
+        }
+    }
+    $candidateDrives = $matchedDrives
 }
 
 if (-not $candidateDrives -or $candidateDrives.Count -eq 0) {
-    Fail "Could not find a Pi boot partition. Make sure the SD card is inserted and was flashed with Pi OS. Available drives: $((Get-PSDrive -PSProvider FileSystem | Where-Object Root -match '^[D-Z]:\\').Root -join ', ')"
+    Write-Host ""
+    Warn "No drive contains cmdline.txt - boot partition not detected."
+    Write-Host ""
+    Write-Host "Drives currently visible to Windows:"
+    Get-PSDrive -PSProvider FileSystem | Where-Object Root -match '^[A-Z]:\\' | ForEach-Object {
+        $hasCmd = if (Test-Path "$($_.Root)cmdline.txt") { "YES" } else { "no" }
+        $hasCfg = if (Test-Path "$($_.Root)config.txt")  { "YES" } else { "no" }
+        Write-Host ("    {0,-6}  cmdline.txt={1}  config.txt={2}" -f $_.Root, $hasCmd, $hasCfg)
+    }
+    Write-Host ""
+    Write-Host "Try this:"
+    Write-Host "  1. Unplug the SD card reader, plug it back in (Windows may need to re-mount)."
+    Write-Host "  2. If only ONE drive letter appears for the SD card, Pi OS may have only mounted"
+    Write-Host "     the root partition (ext4) which Windows can't read. Check Disk Management."
+    Write-Host "  3. If you used Pi Imager's gear settings, try re-flashing without them."
+    Write-Host ""
+    Fail "Aborting - cannot find a Pi boot partition"
 }
 
 if ($candidateDrives.Count -gt 1) {
@@ -68,10 +94,25 @@ if ($candidateDrives.Count -gt 1) {
 }
 
 $BootDrive = $candidateDrives[0]
+# Normalize: ensure $BootDrive ends with a backslash. Some path operations
+# in PowerShell behave differently with "E:" vs "E:\".
+if (-not $BootDrive.EndsWith('\')) {
+    $BootDrive = "$BootDrive\"
+}
 Ok "Boot partition: $BootDrive"
 
-# Sanity check — does it really have cmdline.txt and config.txt?
-if (-not (Test-Path "$BootDrive\cmdline.txt") -or -not (Test-Path "$BootDrive\config.txt")) {
+# Sanity check - does it really have cmdline.txt and config.txt?
+$cmdlinePath = Join-Path $BootDrive "cmdline.txt"
+$configPath  = Join-Path $BootDrive "config.txt"
+Write-Host "  Checking: $cmdlinePath"
+Write-Host "  Checking: $configPath"
+if (-not (Test-Path $cmdlinePath) -or -not (Test-Path $configPath)) {
+    Write-Host ""
+    Warn "Sanity check failed - files not found at expected locations."
+    Write-Host ""
+    Write-Host "What IS at $BootDrive :"
+    Get-ChildItem $BootDrive -File -ErrorAction SilentlyContinue | Select-Object Name, Length | Format-Table
+    Write-Host ""
     Fail "$BootDrive doesn't look like a Pi boot partition (missing cmdline.txt or config.txt)"
 }
 
@@ -88,26 +129,27 @@ $gridfinityPwdHash = '$6$rounds=10000$XO5wHIuxiUyfKAld$y9aQrZ2dnL6Xv.W3T.MJgEN1Z
 
 @"
 gridfinity:$gridfinityPwdHash
-"@ | Out-File -Encoding ASCII -NoNewline -FilePath "$BootDrive\userconf.txt"
+"@ | Out-File -Encoding ASCII -NoNewline -FilePath (Join-Path $BootDrive "userconf.txt")
 Ok "userconf.txt written (user 'gridfinity', password 'gridfinity')"
 
 # ---- Enable SSH -----------------------------------------------------------
 Info "Enabling SSH"
 # Pi OS enables SSH if a file named 'ssh' (or 'ssh.txt') exists in /boot
-New-Item -ItemType File -Force -Path "$BootDrive\ssh" | Out-Null
+New-Item -ItemType File -Force -Path (Join-Path $BootDrive "ssh") | Out-Null
 Ok "SSH enabled (will start on first boot)"
 
 # ---- Drop the SSH public key for passwordless login ----------------------
 Info "Staging your SSH public key"
 # We'll have firstrun.sh place it in /home/gridfinity/.ssh/authorized_keys
-New-Item -ItemType Directory -Force -Path "$BootDrive\gridfinity" | Out-Null
-$publicKey | Out-File -Encoding ASCII -NoNewline -FilePath "$BootDrive\gridfinity\authorized_keys"
-Ok "Public key staged at $BootDrive\gridfinity\authorized_keys"
+New-Item -ItemType Directory -Force -Path (Join-Path $BootDrive "gridfinity") | Out-Null
+$authKeyPath = Join-Path $BootDrive "gridfinity\authorized_keys"
+$publicKey | Out-File -Encoding ASCII -NoNewline -FilePath $authKeyPath
+Ok "Public key staged at $authKeyPath"
 
 # ---- Set the hostname -----------------------------------------------------
 Info "Setting hostname"
 # Pi OS Imager-style: /boot/hostname is read on first boot if present (via firstrun)
-$Hostname | Out-File -Encoding ASCII -NoNewline -FilePath "$BootDrive\hostname.txt"
+$Hostname | Out-File -Encoding ASCII -NoNewline -FilePath (Join-Path $BootDrive "hostname.txt")
 Ok "Hostname set to '$Hostname'"
 
 # ---- Drop the firstrun.sh -------------------------------------------------
@@ -163,7 +205,7 @@ if id gridfinity >/dev/null 2>&1; then
     fi
   done
 else
-  echo "WARNING: gridfinity user doesn't exist yet — SSH key not installed"
+  echo "WARNING: gridfinity user doesn't exist yet - SSH key not installed"
 fi
 
 # ---- Harden SSH: key-only, no passwords ----------------------------------
@@ -199,7 +241,7 @@ if ping -c 1 -W 2 github.com >/dev/null 2>&1; then
   INSTALL_RC=$?
   echo "Installer exit code: $INSTALL_RC"
 else
-  echo "Network unreachable — installer will retry on next boot"
+  echo "Network unreachable - installer will retry on next boot"
   exit 1
 fi
 
@@ -214,11 +256,11 @@ sleep 10
 reboot
 '@
 
-$firstRunScript | Out-File -Encoding ASCII -NoNewline -FilePath "$BootDrive\firstrun.sh"
+$firstRunScript | Out-File -Encoding ASCII -NoNewline -FilePath (Join-Path $BootDrive "firstrun.sh")
 # Ensure Unix line endings (PowerShell may have added CRLF)
-$content = Get-Content "$BootDrive\firstrun.sh" -Raw
+$content = Get-Content (Join-Path $BootDrive "firstrun.sh") -Raw
 $content = $content -replace "`r`n", "`n"
-[System.IO.File]::WriteAllText("$BootDrive\firstrun.sh", $content, [System.Text.Encoding]::ASCII)
+[System.IO.File]::WriteAllText((Join-Path $BootDrive "firstrun.sh"), $content, [System.Text.Encoding]::ASCII)
 Ok "firstrun.sh written"
 
 # ---- Drop the systemd unit that runs firstrun.sh -------------------------
@@ -244,12 +286,12 @@ WantedBy=multi-user.target
 
 # This unit file goes onto the boot partition; we'll have a tiny shell
 # bootstrap (via cmdline.txt) copy it into place and enable it.
-$serviceUnit -replace "`r`n", "`n" | Out-File -Encoding ASCII -NoNewline -FilePath "$BootDrive\gridfinity-firstrun.service"
+$serviceUnit -replace "`r`n", "`n" | Out-File -Encoding ASCII -NoNewline -FilePath (Join-Path $BootDrive "gridfinity-firstrun.service")
 Ok "Service unit staged"
 
 # ---- Modify cmdline.txt to bootstrap firstrun --------------------------
 Info "Hooking cmdline.txt"
-$cmdlineFile = "$BootDrive\cmdline.txt"
+$cmdlineFile = (Join-Path $BootDrive "cmdline.txt")
 $cmdline = (Get-Content $cmdlineFile -Raw).Trim()
 
 # Pi OS uses systemd. We add a 'systemd.run' parameter that runs a one-liner

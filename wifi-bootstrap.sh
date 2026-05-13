@@ -4,10 +4,10 @@
 #  ----------------------------------------------------------------------------
 #  Installs and configures comitup, which makes the Pi broadcast an open WiFi
 #  hotspot called "Gridfinity-XXXX" (last 4 of MAC) when:
-#    - The Pi has never been configured (no wifi profiles stored) â€” AP mode
+#    - The Pi has never been configured (no wifi profiles stored) Ã¢â‚¬â€ AP mode
 #      immediately, no wait
 #    - A configured Pi boots and can't find any of its known WiFi networks for
-#      60 seconds â€” falls back to AP mode so user can reconfigure
+#      60 seconds Ã¢â‚¬â€ falls back to AP mode so user can reconfigure
 #
 #  Once a user connects through comitup's captive portal and provides
 #  credentials, comitup switches the Pi to client mode. AP mode only returns
@@ -20,9 +20,9 @@ set -euo pipefail
 
 RED=$'\033[31m'; GREEN=$'\033[32m'; YELLOW=$'\033[33m'; BLUE=$'\033[34m'; BOLD=$'\033[1m'; RESET=$'\033[0m'
 info()  { echo "${BLUE}${BOLD}==>${RESET} $*"; }
-ok()    { echo "  ${GREEN}âœ“${RESET} $*"; }
+ok()    { echo "  ${GREEN}Ã¢Å“â€œ${RESET} $*"; }
 warn()  { echo "  ${YELLOW}!${RESET} $*"; }
-fail()  { echo "  ${RED}âœ—${RESET} $*" >&2; exit 1; }
+fail()  { echo "  ${RED}Ã¢Å“â€”${RESET} $*" >&2; exit 1; }
 
 if [ "$EUID" -ne 0 ]; then
   fail "Run with sudo."
@@ -30,7 +30,7 @@ fi
 
 # Check for a WiFi device first - if there isn't one, AP mode is pointless
 if ! ls /sys/class/net/ | grep -q '^wlan'; then
-  warn "No WiFi device detected â€” skipping AP bootstrap install."
+  warn "No WiFi device detected Ã¢â‚¬â€ skipping AP bootstrap install."
   warn "(Pi will work in ethernet-only mode.)"
   exit 0
 fi
@@ -45,7 +45,7 @@ if apt-cache show comitup >/dev/null 2>&1; then
   apt-get install -y -qq --no-install-recommends comitup
   ok "comitup installed from apt repo"
 else
-  warn "comitup not in main apt repo â€” adding upstream source"
+  warn "comitup not in main apt repo Ã¢â‚¬â€ adding upstream source"
   # Add the upstream apt source (davesteele/comitup maintainer)
   curl -fsSL -o /tmp/comitup-src.deb \
     "https://davesteele.github.io/comitup/latest/davesteele-comitup-apt-source_latest.deb" \
@@ -104,7 +104,7 @@ verbose: 0
 # immediately.
 primary_wifi_timeout: 60
 
-# Don't include external services in the captive portal â€” keep it focused.
+# Don't include external services in the captive portal Ã¢â‚¬â€ keep it focused.
 external_callback:
 EOF
 
