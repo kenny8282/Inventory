@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.9.4"  # fix: switch to farixembedded ptouch fork (CMake, supports PT-H500)
+APP_VERSION = "1.9.5"  # fix: remove --precut flag (not in farixembedded fork)
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
@@ -408,38 +408,34 @@ def print_label():
                 "detail": info,
             }), 503
 
-        # Strategy for cuts: every label always gets --precut so its leading
-        # edge is cut cleanly (drops the 25mm leader as a single waste piece
-        # before printing label 1). For batches, --chain on all but the
-        # last label skips the trailing feed so the next label's --precut
-        # is the trailing cut of the previous one.
+        # Cut strategy for the farixembedded ptouch-print fork:
         #
-        # ptouch-print v1.8 flag semantics:
-        #   --chain   = skip final feed/cut after this label
-        #   --precut  = cut tape BEFORE printing this label
+        # This fork doesn't have --precut. Cuts work like this:
+        #   - Every ptouch-print invocation feeds + auto-cuts at the END.
+        #   - --chain skips the final feed/cut so the next label can chain on.
+        #   - --cutmark prints a small mark where the user should manually cut.
         #
-        # Single label:
-        #   ptouch-print --image L.png --precut
-        #   -> feed 25mm leader, CUT (waste), print L, auto-cut at end.
-        #   -> Result: 40mm label with clean cuts on both ends.
+        # Best UX: print each label as its own invocation so each one gets a
+        # clean auto-cut at the end. The printer's mandatory 25mm leader only
+        # appears on the very first label of a print session (the printer
+        # remembers where it is on the tape). Multi-label batches can group
+        # multiple --image flags in one invocation for tighter packing, but
+        # that requires manual cutting between them via --cutmark.
         #
-        # Batch of N labels (clean cuts on both ends of every label):
-        #   All labels:      ptouch-print --image Lk.png --precut --chain
-        #   Last label:      ptouch-print --image LN.png --precut
-        #   -> Only ONE 25mm leader-waste piece for the entire batch.
+        # Single label:           ptouch-print --image L.png
+        #   -> prints L, auto-cuts at end
+        # Multiple discrete labels (each fully cut):
+        #   -> separate ptouch-print invocations per label
 
         all_results = []
         n = len(tmp_paths)
         for c in range(copies):
             for i, p in enumerate(tmp_paths):
-                is_last = (i == n - 1)
-                cmd = [PTOUCH_BIN, "--image", p, "--precut"]
-                if not is_last:
-                    cmd.append("--chain")
+                cmd = [PTOUCH_BIN, "--image", p]
                 r = subprocess.run(
                     cmd,
                     capture_output=True, text=True,
-                    timeout=60,  # per-label; ptouch-print can take 5-10s and chained labels longer
+                    timeout=60,  # per-label; ptouch-print can take 5-10s
                 )
                 all_results.append({
                     "copy": c + 1,
