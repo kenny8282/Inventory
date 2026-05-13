@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================================
-#  Gridfinity Label Forge + Inventory â€” single-command installer
+#  Gridfinity Label Forge + Inventory Ã¢â‚¬â€ single-command installer
 #  ----------------------------------------------------------------------------
 #  Run on a fresh Raspberry Pi OS Lite (Bookworm or newer), Pi 4 / Pi 5 /
 #  Pi Zero 2 W. Requires sudo.
@@ -13,7 +13,7 @@
 #    less install.sh
 #    sudo bash install.sh
 #
-#  Idempotent â€” re-running upgrades in place without losing data.
+#  Idempotent Ã¢â‚¬â€ re-running upgrades in place without losing data.
 # ============================================================================
 set -euo pipefail
 
@@ -50,7 +50,7 @@ if [ "$UNATTENDED" = "1" ]; then
   echo "[$(date)] Unattended install starting (log: $LOG_FILE)"
 fi
 
-# Never prompt for git credentials. If a clone needs auth, that's a bug â€” fail
+# Never prompt for git credentials. If a clone needs auth, that's a bug Ã¢â‚¬â€ fail
 # loudly instead of hanging the curl|sudo pipe forever.
 export GIT_TERMINAL_PROMPT=0
 export GIT_ASKPASS=/bin/true
@@ -64,9 +64,9 @@ SERVICE_USER="${GRIDFINITY_USER:-${SUDO_USER:-$(whoami)}}"
 # Pretty output helpers
 RED=$'\033[31m'; GREEN=$'\033[32m'; YELLOW=$'\033[33m'; BLUE=$'\033[34m'; BOLD=$'\033[1m'; RESET=$'\033[0m'
 info()  { echo "${BLUE}${BOLD}==>${RESET} $*"; }
-ok()    { echo "  ${GREEN}âœ“${RESET} $*"; }
+ok()    { echo "  ${GREEN}Ã¢Å“â€œ${RESET} $*"; }
 warn()  { echo "  ${YELLOW}!${RESET} $*"; }
-fail()  { echo "  ${RED}âœ—${RESET} $*" >&2; exit 1; }
+fail()  { echo "  ${RED}Ã¢Å“â€”${RESET} $*" >&2; exit 1; }
 
 # ---- Pre-flight checks ----------------------------------------------------
 info "Pre-flight checks"
@@ -90,7 +90,7 @@ fi
 ARCH=$(uname -m)
 case "$ARCH" in
   aarch64|armv7l|armv6l) ok "Architecture: $ARCH" ;;
-  *) warn "Untested architecture: $ARCH â€” proceeding anyway" ;;
+  *) warn "Untested architecture: $ARCH Ã¢â‚¬â€ proceeding anyway" ;;
 esac
 
 if ! ping -c 1 -W 3 github.com >/dev/null 2>&1; then
@@ -120,7 +120,7 @@ else
   rm -rf "$PTOUCH_BUILD_DIR"
   git clone --depth 1 "$PTOUCH_REPO" "$PTOUCH_BUILD_DIR"
   cd "$PTOUCH_BUILD_DIR"
-  # Build (no autotools â€” ptouch-print uses CMake)
+  # Build (no autotools Ã¢â‚¬â€ ptouch-print uses CMake)
   mkdir -p build && cd build
   cmake .. -DCMAKE_BUILD_TYPE=Release >/dev/null
   make -j"$(nproc)" >/dev/null
@@ -135,7 +135,7 @@ fi
 info "Setting up printer USB permissions"
 UDEV_RULE=/etc/udev/rules.d/50-brother-ptouch.rules
 cat > "$UDEV_RULE" <<'EOF'
-# Brother P-touch label printers â€” accessible to plugdev group
+# Brother P-touch label printers Ã¢â‚¬â€ accessible to plugdev group
 # Covers PT-H500, PT-P700, PT-E550W, PT-D460BT and similar
 SUBSYSTEM=="usb", ATTR{idVendor}=="04f9", GROUP="plugdev", MODE="0664"
 EOF
@@ -162,7 +162,7 @@ info "Fetching application source"
 PERSISTENT_SRC="$INSTALL_DIR/src"
 mkdir -p "$INSTALL_DIR"
 if [ -d "$PERSISTENT_SRC/.git" ]; then
-  ok "Existing source clone â€” pulling latest"
+  ok "Existing source clone Ã¢â‚¬â€ pulling latest"
   cd "$PERSISTENT_SRC"
   git fetch --quiet origin
   git checkout --quiet "$REPO_BRANCH"
@@ -218,13 +218,13 @@ if [ -f "$SRC_DIR/etc/gridfinity-wifi-sudoers.template" ]; then
   chmod 0440 /etc/sudoers.d/gridfinity-wifi
   # Validate
   if ! visudo -c -q -f /etc/sudoers.d/gridfinity-wifi 2>/dev/null; then
-    warn "Sudoers validation failed â€” removing the file"
+    warn "Sudoers validation failed Ã¢â‚¬â€ removing the file"
     rm -f /etc/sudoers.d/gridfinity-wifi
   else
     ok "WiFi management sudoers rule installed"
   fi
 else
-  warn "WiFi sudoers template not found â€” WiFi setup page will be read-only"
+  warn "WiFi sudoers template not found Ã¢â‚¬â€ WiFi setup page will be read-only"
 fi
 
 # ---- Update system --------------------------------------------------------
@@ -254,7 +254,7 @@ fi
 # stays current without making the user wait for a network call.
 CRON_FILE=/etc/cron.d/gridfinity-update-check
 cat > "$CRON_FILE" <<EOF
-# Daily update check for Gridfinity â€” refreshes the update-cache.json file
+# Daily update check for Gridfinity Ã¢â‚¬â€ refreshes the update-cache.json file
 # so the home page knows whether a new version is available.
 # Runs at 3:17am to avoid clashing with common backup windows.
 17 3 * * * $SERVICE_USER curl -sk https://localhost/api/system/update-check?refresh=1 >/dev/null 2>&1
@@ -267,7 +267,7 @@ info "Setting up TLS certificate"
 CERT_DIR=/etc/ssl/gridfinity
 mkdir -p "$CERT_DIR"
 if [ -f "$CERT_DIR/gridfinity.crt" ] && [ -f "$CERT_DIR/gridfinity.key" ]; then
-  ok "Existing cert at $CERT_DIR â€” keeping it"
+  ok "Existing cert at $CERT_DIR Ã¢â‚¬â€ keeping it"
 else
   # Generate cert valid for both .local and the Pi's hostname
   HOSTNAME=$(hostname)
@@ -288,7 +288,7 @@ cp "$SRC_DIR/etc/gridfinity-nginx.conf" /etc/nginx/sites-available/gridfinity
 ln -sf /etc/nginx/sites-available/gridfinity /etc/nginx/sites-enabled/gridfinity
 # Remove the default site if it's still there
 rm -f /etc/nginx/sites-enabled/default
-nginx -t >/dev/null 2>&1 || fail "nginx config test failed â€” check /etc/nginx/sites-available/gridfinity"
+nginx -t >/dev/null 2>&1 || fail "nginx config test failed Ã¢â‚¬â€ check /etc/nginx/sites-available/gridfinity"
 systemctl reload nginx 2>/dev/null || systemctl restart nginx
 ok "nginx running on 80 (redirect) and 443 (HTTPS)"
 
@@ -306,7 +306,7 @@ sleep 2
 if systemctl is-active --quiet gridfinity-backend; then
   ok "gridfinity-backend.service is active"
 else
-  warn "Service started but is not active yet â€” check: sudo journalctl -u gridfinity-backend -n 30"
+  warn "Service started but is not active yet Ã¢â‚¬â€ check: sudo journalctl -u gridfinity-backend -n 30"
 fi
 
 # ---- Verify mDNS (Avahi) so <hostname>.local works ------------------------
@@ -314,14 +314,14 @@ info "Verifying mDNS (so <hostname>.local resolves)"
 if systemctl is-active --quiet avahi-daemon; then
   ok "avahi-daemon is running"
 else
-  warn "avahi-daemon not running â€” installing/starting it"
+  warn "avahi-daemon not running Ã¢â‚¬â€ installing/starting it"
   apt-get install -y -qq --no-install-recommends avahi-daemon
   systemctl enable avahi-daemon >/dev/null 2>&1 || true
   systemctl start avahi-daemon
   if systemctl is-active --quiet avahi-daemon; then
     ok "avahi-daemon now running"
   else
-    warn "avahi-daemon failed to start â€” users will need to use the IP address"
+    warn "avahi-daemon failed to start Ã¢â‚¬â€ users will need to use the IP address"
   fi
 fi
 
@@ -329,41 +329,41 @@ fi
 if [ "$INSTALL_WIFI_BOOTSTRAP" = "1" ]; then
   if [ -f "$SRC_DIR/wifi-bootstrap.sh" ]; then
     info "Installing WiFi AP-mode bootstrap"
-    bash "$SRC_DIR/wifi-bootstrap.sh" || warn "WiFi bootstrap failed â€” Pi will still work over ethernet"
+    bash "$SRC_DIR/wifi-bootstrap.sh" || warn "WiFi bootstrap failed Ã¢â‚¬â€ Pi will still work over ethernet"
   else
-    warn "wifi-bootstrap.sh not found in repo â€” skipping AP mode setup"
+    warn "wifi-bootstrap.sh not found in repo Ã¢â‚¬â€ skipping AP mode setup"
   fi
 else
   ok "WiFi AP-mode bootstrap skipped (--no-bootstrap)"
 fi
 
 # ---- Cleanup --------------------------------------------------------------
-# (We KEEP $SRC_DIR now â€” it lives at $PERSISTENT_SRC and is used by the
+# (We KEEP $SRC_DIR now Ã¢â‚¬â€ it lives at $PERSISTENT_SRC and is used by the
 #  update system to pull future versions. Don't delete it.)
 
 # ---- Success ---------------------------------------------------------------
 HOSTNAME_SHORT=$(hostname)
 IP=$(hostname -I | awk '{print $1}')
 echo
-echo "${GREEN}${BOLD}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${RESET}"
+echo "${GREEN}${BOLD}Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â${RESET}"
 echo "${GREEN}${BOLD}  Gridfinity is installed and running!${RESET}"
-echo "${GREEN}${BOLD}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${RESET}"
+echo "${GREEN}${BOLD}Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â${RESET}"
 echo
 echo "  Open one of these URLs on any device on your network:"
 echo
 echo "    ${BOLD}https://${HOSTNAME_SHORT}.local/${RESET}        ${BLUE}(works on most devices)${RESET}"
-echo "    ${BOLD}https://${IP}/${RESET}                  ${BLUE}(direct IP â€” always works)${RESET}"
+echo "    ${BOLD}https://${IP}/${RESET}                  ${BLUE}(direct IP Ã¢â‚¬â€ always works)${RESET}"
 echo
 echo "  ${YELLOW}The ${HOSTNAME_SHORT}.local URL uses mDNS, which works on:${RESET}"
 echo "    macOS, iOS, Windows 10+, Linux, and Android 12+"
 echo
 echo "  ${YELLOW}If <hostname>.local doesn't work for your device:${RESET}"
-echo "    - Use the IP address (https://${IP}/) instead â€” always works"
+echo "    - Use the IP address (https://${IP}/) instead Ã¢â‚¬â€ always works"
 echo "    - Or set a static IP/DHCP reservation on your router so it stays fixed"
 echo "    - The IP can change after a reboot if not reserved"
 echo
 echo "  Your browser will show a security warning (self-signed cert)."
-echo "  Click ${BOLD}'Advanced'${RESET} â†’ ${BOLD}'Proceed'${RESET} once per device."
+echo "  Click ${BOLD}'Advanced'${RESET} Ã¢â€ â€™ ${BOLD}'Proceed'${RESET} once per device."
 echo
 echo "  First time using the printer? Plug it in via USB and run:"
 echo "    ${BOLD}ptouch-print --info${RESET}"
@@ -376,4 +376,6 @@ echo "    hostname -I                                  ${BLUE}# show my IP${RESE
 echo
 echo "  Documentation:  ${REPO_URL%.git}#readme"
 echo
-echo "${GREEN}${BOLD}â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•${RESET}"
+echo "${GREEN}${BOLD}Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â${RESET}"
+
+# v1.9.2 cache bust
