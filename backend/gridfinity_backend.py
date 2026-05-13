@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.9.8"  # fix: wifi_connect deletes conflicting profile first to avoid key-mgmt error
+APP_VERSION = "1.9.9"  # fix: comitup web_service value (must be unit name, not 'enabled')
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))

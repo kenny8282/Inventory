@@ -92,12 +92,12 @@ ap_name: Gridfinity-Setup
 # AP password: blank = open network (only on during setup, then disappears)
 ap_password:
 
-# Keep the captive portal web service active so user can pick a WiFi
-# network from the browser. This binds to port 80 on the AP IP (10.41.0.1).
-# Valid values are 'enabled' or 'disabled'. ('nm-cli' was a typo I made
-# in an earlier version; comitup silently treats unknown values as
-# disabled.)
-web_service: enabled
+# The web_service setting is the NAME of a systemd unit comitup will
+# start when entering HOTSPOT mode and stop when leaving. The default
+# (and what we want) is comitup-web. Earlier versions of this script
+# mistakenly used 'enabled' and 'nm-cli' which crashed comitup with
+# "Unit name enabled is not valid" dbus errors.
+web_service: comitup-web
 
 # Verbose logs only when troubleshooting
 verbose: 0
