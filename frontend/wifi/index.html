@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>WiFi · Gridfinity</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Archivo:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ece8de;
+    --paper: #fdfcf7;
+    --ink: #161616;
+    --accent: #c8341a;
+    --accent-2: #1a4d8f;
+    --green: #1a5d1a;
+    --muted: #6b6862;
+    --grid: rgba(22,22,22,0.05);
+    --warn: #c47a00;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 42px 42px;
+  }
+  .app {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 24px 16px 48px;
+  }
+  header {
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 14px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  header a.back {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink);
+    text-decoration: none;
+    border: 1.5px solid var(--ink);
+    padding: 6px 10px;
+    background: var(--paper);
+  }
+  header a.back:hover { background: var(--ink); color: var(--paper); }
+  h1 {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 900;
+    font-size: 26px;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+  .panel {
+    background: var(--paper);
+    border: 1.5px solid var(--ink);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .panel h2 {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 800;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--ink);
+  }
+  .status-grid { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; font-size: 13px; }
+  .status-grid .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; align-self: center; }
+  .status-grid .v { font-weight: 700; }
+  .status-grid .v.good { color: var(--green); }
+  .status-grid .v.muted { color: var(--muted); font-weight: 400; }
+  button, .btn {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 10px 16px;
+    background: var(--ink);
+    color: var(--paper);
+    border: 1.5px solid var(--ink);
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+  }
+  button.secondary, .btn.secondary { background: var(--paper); color: var(--ink); }
+  button.danger { background: var(--paper); color: var(--accent); border-color: var(--accent); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .net-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+  .net-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1.5px solid var(--ink);
+    background: var(--paper);
+    cursor: pointer;
+    transition: background 0.1s, color 0.1s;
+  }
+  .net-row:hover, .net-row:active { background: var(--ink); color: var(--paper); }
+  .net-row .ssid { flex: 1; font-weight: 700; font-size: 14px; overflow: hidden; text-overflow: ellipsis; }
+  .net-row .signal {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .net-row:hover .signal { color: rgba(253,252,247,0.7); }
+  .net-row .lock { font-size: 13px; opacity: 0.6; }
+  .net-row .in-use {
+    background: var(--green);
+    color: var(--paper);
+    font-size: 9px;
+    padding: 2px 6px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-family: 'Archivo', sans-serif;
+    font-weight: 700;
+  }
+  .saved-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 10px 14px; border: 1.5px solid var(--ink); background: var(--paper); margin-bottom: 6px; }
+  .saved-row .ssid { font-weight: 700; }
+  /* Modal */
+  .modal-bg { position: fixed; inset: 0; background: rgba(22,22,22,0.7); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 100; }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    padding: 20px;
+    max-width: 420px;
+    width: 100%;
+    position: relative;
+  }
+  .modal h3 {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 900;
+    font-size: 16px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+  }
+  .modal label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 4px;
+    margin-top: 10px;
+  }
+  .modal input {
+    width: 100%;
+    border: 1.5px solid var(--ink);
+    background: var(--paper);
+    padding: 10px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+  }
+  .modal input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .modal .actions { display: flex; gap: 8px; margin-top: 16px; }
+  .modal .actions button { flex: 1; }
+  .warn {
+    background: rgba(196, 122, 0, 0.1);
+    border-left: 3px solid var(--warn);
+    padding: 8px 10px;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--ink);
+  }
+  .error {
+    background: rgba(200, 52, 26, 0.1);
+    border-left: 3px solid var(--accent);
+    padding: 8px 10px;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--accent);
+  }
+  .empty { color: var(--muted); font-style: italic; padding: 12px 4px; font-size: 13px; }
+  .loading { color: var(--muted); padding: 12px 4px; font-size: 13px; }
+  .signal-bars { display: inline-block; vertical-align: middle; margin-right: 6px; }
+  .switch-pwd {
+    display: inline-block; font-size: 11px; color: var(--muted);
+    cursor: pointer; text-decoration: underline; margin-top: 4px;
+  }
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .toolbar h2 { margin: 0; border: none; padding: 0; }
+  .countdown {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 900;
+    font-size: 28px;
+    text-align: center;
+    margin: 12px 0;
+    color: var(--accent-2);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <a href="/" class="back">← Home</a>
+    <h1>WiFi</h1>
+  </header>
+
+  <div class="panel">
+    <h2>Current Connection</h2>
+    <div id="statusBox" class="loading">Checking status…</div>
+  </div>
+
+  <div class="panel">
+    <div class="toolbar">
+      <h2>Available Networks</h2>
+      <button class="secondary" id="rescanBtn">Rescan</button>
+    </div>
+    <div id="netList" class="loading">Scanning…</div>
+  </div>
+
+  <div class="panel" id="savedPanel" style="display:none;">
+    <h2>Saved Networks</h2>
+    <div id="savedList"></div>
+  </div>
+</div>
+
+<!-- Password / connect modal -->
+<div class="modal-bg" id="connectModal">
+  <div class="modal">
+    <h3 id="connectTitle">Connect</h3>
+    <div id="connectWarn"></div>
+    <div id="connectError"></div>
+    <div id="connectForm">
+      <label id="pwdLabel" for="pwdInput">Password</label>
+      <input type="password" id="pwdInput" placeholder="WiFi password" autocomplete="off">
+      <span class="switch-pwd" id="togglePwd">Show password</span>
+      <div class="actions">
+        <button class="secondary" onclick="closeConnect()">Cancel</button>
+        <button id="connectBtn" onclick="doConnect()">Connect</button>
+      </div>
+    </div>
+    <div id="connectProgress" style="display:none;">
+      <p style="font-size:13px;color:var(--muted);margin-top:10px;">Connecting…</p>
+    </div>
+    <div id="connectDone" style="display:none;">
+      <p style="font-size:13px;margin-top:10px;">
+        ✓ Connected to <strong id="connectedSsid"></strong>
+      </p>
+      <div class="warn">
+        You can now unplug the ethernet cable. After unplugging, wait ~30 seconds, then refresh this page from your phone using the new URL.
+      </div>
+      <div class="actions">
+        <button onclick="closeConnect(); refreshAll();">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let state = {
+  status: null,
+  selectedNetwork: null,
+};
+
+function el(id) { return document.getElementById(id); }
+function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function signalBars(pct) {
+  // Render 4-segment ASCII bar
+  if (pct == null) return '—';
+  const filled = Math.round((pct / 100) * 4);
+  return '▮'.repeat(filled) + '▯'.repeat(4 - filled);
+}
+
+async function loadStatus() {
+  try {
+    const r = await fetch('/api/wifi/status').then(r => r.json());
+    state.status = r;
+    if (!r.available) {
+      el('statusBox').innerHTML = '<div class="empty">No WiFi adapter detected on this device.</div>';
+      el('netList').innerHTML = '<div class="empty">WiFi not available.</div>';
+      el('rescanBtn').disabled = true;
+      return;
+    }
+    let html = '<div class="status-grid">';
+    if (r.wifi && r.wifi.ssid) {
+      html += `<div class="k">WiFi</div><div class="v good">"${esc(r.wifi.ssid)}"${r.wifi.signal ? ' · ' + r.wifi.signal + '%' : ''}</div>`;
+    } else {
+      html += `<div class="k">WiFi</div><div class="v muted">Not connected</div>`;
+    }
+    if (r.ethernet) {
+      html += `<div class="k">Ethernet</div><div class="v good">Connected</div>`;
+    }
+    if (r.ip) {
+      html += `<div class="k">IP</div><div class="v">${esc(r.ip)}</div>`;
+    }
+    html += '</div>';
+    el('statusBox').innerHTML = html;
+  } catch(e) {
+    el('statusBox').innerHTML = '<div class="empty">Could not load status.</div>';
+  }
+}
+
+async function loadScan() {
+  el('netList').innerHTML = '<div class="loading">Scanning…</div>';
+  try {
+    const r = await fetch('/api/wifi/scan').then(r => r.json());
+    if (!r.available) {
+      el('netList').innerHTML = '<div class="empty">WiFi not available.</div>';
+      return;
+    }
+    const networks = r.networks || [];
+    if (!networks.length) {
+      el('netList').innerHTML = '<div class="empty">No networks found. Make sure WiFi is on and try Rescan.</div>';
+      return;
+    }
+    el('netList').innerHTML = '<div class="net-list">' + networks.map(n => `
+      <div class="net-row" data-ssid="${esc(n.ssid)}" data-secured="${n.secured}">
+        <span class="lock">${n.secured ? '🔒' : '🔓'}</span>
+        <span class="ssid">${esc(n.ssid)}</span>
+        ${n.in_use ? '<span class="in-use">In use</span>' : ''}
+        <span class="signal"><span class="signal-bars">${signalBars(n.signal)}</span>${n.signal}%</span>
+      </div>
+    `).join('') + '</div>';
+    document.querySelectorAll('.net-row').forEach(row => {
+      row.addEventListener('click', () => {
+        openConnect({
+          ssid: row.dataset.ssid,
+          secured: row.dataset.secured === 'true',
+        });
+      });
+    });
+  } catch(e) {
+    el('netList').innerHTML = '<div class="empty">Scan failed.</div>';
+  }
+}
+
+async function loadSaved() {
+  try {
+    const r = await fetch('/api/wifi/saved').then(r => r.json());
+    if (!r.available || !(r.networks || []).length) {
+      el('savedPanel').style.display = 'none';
+      return;
+    }
+    el('savedPanel').style.display = 'block';
+    el('savedList').innerHTML = (r.networks || []).map(n => `
+      <div class="saved-row">
+        <span class="ssid">${esc(n.name)}</span>
+        <button class="danger" onclick="forgetNetwork('${esc(n.name).replace(/'/g, "\\'")}')">Forget</button>
+      </div>
+    `).join('');
+  } catch(e) {
+    el('savedPanel').style.display = 'none';
+  }
+}
+
+function openConnect(net) {
+  state.selectedNetwork = net;
+  el('connectTitle').textContent = 'Connect to ' + net.ssid;
+  el('connectError').innerHTML = '';
+  el('pwdInput').value = '';
+  el('pwdInput').type = 'password';
+  el('togglePwd').textContent = 'Show password';
+  el('connectForm').style.display = 'block';
+  el('connectProgress').style.display = 'none';
+  el('connectDone').style.display = 'none';
+  el('connectBtn').disabled = false;
+
+  // Hide password field if it's an open network
+  if (!net.secured) {
+    el('pwdInput').style.display = 'none';
+    el('pwdLabel').style.display = 'none';
+    el('togglePwd').style.display = 'none';
+  } else {
+    el('pwdInput').style.display = 'block';
+    el('pwdLabel').style.display = 'block';
+    el('togglePwd').style.display = 'inline-block';
+  }
+
+  // Warning if we're already on WiFi (will briefly disconnect)
+  let warn = '';
+  if (state.status && state.status.wifi && state.status.wifi.ssid && state.status.wifi.ssid !== net.ssid) {
+    warn = `<div class="warn">⚠ You're currently on "${esc(state.status.wifi.ssid)}". Switching may briefly drop your connection. If something hangs, refresh from a different URL.</div>`;
+  }
+  el('connectWarn').innerHTML = warn;
+
+  el('connectModal').classList.add('open');
+  if (net.secured) setTimeout(() => el('pwdInput').focus(), 100);
+}
+
+function closeConnect() {
+  el('connectModal').classList.remove('open');
+  state.selectedNetwork = null;
+}
+
+el('togglePwd').addEventListener('click', () => {
+  const inp = el('pwdInput');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    el('togglePwd').textContent = 'Hide password';
+  } else {
+    inp.type = 'password';
+    el('togglePwd').textContent = 'Show password';
+  }
+});
+
+async function doConnect() {
+  const net = state.selectedNetwork;
+  if (!net) return;
+  const pwd = el('pwdInput').value;
+  if (net.secured && pwd.length < 8) {
+    el('connectError').innerHTML = '<div class="error">Password must be at least 8 characters.</div>';
+    return;
+  }
+  el('connectError').innerHTML = '';
+  el('connectForm').style.display = 'none';
+  el('connectProgress').style.display = 'block';
+  try {
+    const r = await fetch('/api/wifi/connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ssid: net.ssid, password: net.secured ? pwd : '' }),
+    });
+    const d = await r.json();
+    el('connectProgress').style.display = 'none';
+    if (d.ok) {
+      el('connectedSsid').textContent = net.ssid;
+      el('connectDone').style.display = 'block';
+    } else {
+      el('connectForm').style.display = 'block';
+      el('connectError').innerHTML = `<div class="error">${esc(d.error || 'Connection failed')}</div>`;
+    }
+  } catch(e) {
+    el('connectProgress').style.display = 'none';
+    el('connectForm').style.display = 'block';
+    el('connectError').innerHTML = `<div class="error">Network error: ${esc(e.message)}</div>`;
+  }
+}
+
+async function forgetNetwork(name) {
+  if (!confirm(`Forget WiFi network "${name}"?`)) return;
+  try {
+    const r = await fetch('/api/wifi/saved/' + encodeURIComponent(name), { method: 'DELETE' });
+    const d = await r.json();
+    if (d.ok) {
+      refreshAll();
+    } else {
+      alert('Could not forget: ' + (d.error || 'unknown error'));
+    }
+  } catch(e) {
+    alert('Network error: ' + e.message);
+  }
+}
+
+el('rescanBtn').addEventListener('click', loadScan);
+
+async function refreshAll() {
+  await loadStatus();
+  await loadScan();
+  await loadSaved();
+}
+
+refreshAll();
+</script>
+</body>
+</html>

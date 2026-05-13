@@ -65,6 +65,50 @@
     align-self: flex-start;
   }
   header .home-link:hover { color: var(--ink); border-color: var(--ink); }
+  /* ---- PRINTER STATUS STRIP ---- */
+  .printer-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    background: var(--paper);
+    border: 1.5px solid var(--ink);
+    margin-bottom: 18px;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .printer-status .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #888;
+    flex-shrink: 0;
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+  .printer-status .dot.ok { background: var(--green); box-shadow: 0 0 6px rgba(26, 93, 26, 0.5); }
+  .printer-status .dot.err { background: var(--accent); }
+  .printer-status .dot.unknown { background: #888; }
+  .printer-status .label {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 800;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .printer-status #printerText {
+    flex: 1;
+    color: var(--ink);
+  }
+  .printer-status .printer-refresh {
+    background: none;
+    border: 1px solid var(--muted);
+    color: var(--muted);
+    font-size: 14px;
+    padding: 2px 8px;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .printer-status .printer-refresh:hover { color: var(--ink); border-color: var(--ink); }
+  .printer-status .printer-refresh:disabled { opacity: 0.4; cursor: wait; }
   h1 small {
     display: block;
     font-size: 10px;
@@ -533,6 +577,15 @@
       <div>QUEUE: <span class="stat" id="queueCount">0</span> labels</div>
     </div>
   </header>
+
+  <!-- Printer status strip: lives just under the header so users can
+       glance up and immediately see whether the printer is reachable. -->
+  <div id="printerStatus" class="printer-status">
+    <span class="dot" id="printerDot"></span>
+    <span class="label">PRINTER:</span>
+    <span id="printerText">checking…</span>
+    <button class="printer-refresh" onclick="refreshPrinterStatus()" title="Refresh printer status">↻</button>
+  </div>
 
   <div class="layout">
 
@@ -2271,6 +2324,49 @@ function doPrint() {
 }
 
 /* ---- INIT ---- */
+/* ---- PRINTER STATUS DISPLAY ----
+   Pulls /api/printer/status and renders connection state, model, and tape
+   info in the printer-status strip. Called on page load and via the
+   refresh button. Status is refreshed automatically every 30s in case the
+   user plugs the printer in mid-session. */
+async function refreshPrinterStatus() {
+  const dot = document.getElementById('printerDot');
+  const text = document.getElementById('printerText');
+  const btn = document.querySelector('.printer-refresh');
+  if (!dot || !text) return;
+
+  if (btn) btn.disabled = true;
+  text.textContent = 'checking…';
+  dot.className = 'dot unknown';
+
+  try {
+    const r = await fetch('/api/printer/status', { cache: 'no-store' });
+    const d = await r.json();
+    if (d.connected) {
+      dot.className = 'dot ok';
+      const parts = [];
+      if (d.model) parts.push(d.model);
+      if (d.tape_width_mm) {
+        parts.push(`${d.tape_width_mm}mm tape`);
+      } else if (d.tape_width_px) {
+        parts.push(`${d.tape_width_px}px tape`);
+      }
+      text.textContent = parts.join(' · ') || 'Ready';
+    } else {
+      dot.className = 'dot err';
+      let msg = 'Not connected';
+      if (d.hint) msg += ` — ${d.hint}`;
+      else if (d.error) msg += ` — ${d.error}`;
+      text.textContent = msg;
+    }
+  } catch(e) {
+    dot.className = 'dot err';
+    text.textContent = 'Could not query printer';
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 (async function init() {
   setupListeners();
   toggleUrlField();
@@ -2279,6 +2375,9 @@ function doPrint() {
   renderAll();
   // Probe for the Pi backend API. If found, upgrade storage and reload data.
   _upgradeToApiIfAvailable();
+  // Printer status — initial check + refresh every 30 seconds
+  refreshPrinterStatus();
+  setInterval(refreshPrinterStatus, 30000);
 })();
 </script>
 </body>

@@ -216,6 +216,47 @@
   }
   .check-updates:hover { color: var(--ink); }
   .check-updates:disabled { cursor: wait; opacity: 0.6; }
+  /* ---- AP MODE BANNER ---- */
+  .ap-banner {
+    background: var(--paper);
+    border: 2px solid var(--accent);
+    padding: 16px 18px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .ap-banner.hidden { display: none; }
+  .ap-icon { font-size: 32px; flex-shrink: 0; }
+  .ap-text { flex: 1; min-width: 200px; font-size: 13px; line-height: 1.4; }
+  .ap-text strong {
+    font-family: 'Archivo', sans-serif;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: block;
+    margin-bottom: 2px;
+    color: var(--accent);
+  }
+  .ap-text div { color: var(--muted); }
+  .ap-text .mono { font-family: 'JetBrains Mono', monospace; color: var(--ink); font-weight: 700; }
+  .ap-actions { flex-shrink: 0; }
+  .ap-btn {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 8px 14px;
+    background: var(--accent);
+    color: var(--paper);
+    border: 1.5px solid var(--accent);
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .ap-btn:hover { background: var(--ink); border-color: var(--ink); }
   .stats {
     background: var(--paper);
     border: 1.5px solid var(--ink);
@@ -296,6 +337,20 @@
     <div class="update-text">
       <strong>Updating…</strong>
       <div id="updateProgressText">The service will restart in about 10 seconds. This page will reload when it's back up.</div>
+    </div>
+  </div>
+
+  <div id="apModeBanner" class="ap-banner hidden">
+    <div class="ap-icon">📡</div>
+    <div class="ap-text">
+      <strong>Setup Mode</strong>
+      <div>
+        This Pi is broadcasting <span id="apSsidName" class="mono">Gridfinity-Setup</span>.
+        Connect to your home WiFi below to switch it to your network.
+      </div>
+    </div>
+    <div class="ap-actions">
+      <a href="/wifi/" class="ap-btn primary">Connect to WiFi</a>
     </div>
   </div>
 
@@ -522,12 +577,21 @@ async function runUpdate() {
     }
   } catch(e) {}
 
-  // WiFi onboarding logic:
-  // Show banner only if (a) wifi is available, (b) NOT already on wifi, (c) user hasn't skipped
+  // WiFi onboarding logic — also detects AP (setup) mode:
+  // - AP mode: show the "Connect to WiFi" banner (this Pi is broadcasting)
+  // - On wifi: show current SSID in tile, no banner
+  // - On ethernet, no wifi: show "Set up WiFi?" banner unless user skipped
+  // - No wifi adapter: tile says so, no banner
   try {
     const w = await fetch('/api/wifi/status').then(r => r.json());
     const descEl = document.getElementById('wifiStatusDesc');
-    if (!w.available) {
+    if (w.ap_mode) {
+      // Pi is broadcasting its own AP — show the setup banner
+      const ssidEl = document.getElementById('apSsidName');
+      if (ssidEl) ssidEl.textContent = w.ap_ssid || 'Gridfinity-Setup';
+      document.getElementById('apModeBanner').classList.remove('hidden');
+      if (descEl) descEl.textContent = `Broadcasting "${w.ap_ssid || 'Gridfinity-Setup'}" — waiting for setup.`;
+    } else if (!w.available) {
       if (descEl) descEl.textContent = 'No WiFi adapter detected on this device.';
     } else if (w.wifi && w.wifi.ssid) {
       if (descEl) descEl.textContent = `Connected to "${w.wifi.ssid}"${w.wifi.signal ? ' · ' + w.wifi.signal + '%' : ''}.`;

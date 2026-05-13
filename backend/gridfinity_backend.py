@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.7.6"  # fix: real SSID in saved list, NoNewPrivileges off, simpler wifi sudoers
+APP_VERSION = "1.8.0"  # WiFi AP-mode (comitup) + printer status panel on Forge
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
@@ -764,10 +764,47 @@ def _wifi_available():
 
 @app.route("/api/wifi/status", methods=["GET"])
 def wifi_status():
-    """Current connection state: which network are we on, signal, IP, mode."""
+    """Current connection state: which network are we on, signal, IP, mode.
+    Also detects whether comitup is currently in HOTSPOT (AP) mode, which
+    affects how the home page renders."""
     ok, _reason = _wifi_available()
     if not ok:
         return jsonify({"available": False, "reason": _reason})
+
+    # AP-mode detection: comitup running in HOTSPOT state.
+    # We try the comitup-cli command first; if it's not installed, fall back
+    # to checking for the AP IP on wlan0 (10.41.0.1 is comitup's default).
+    ap_mode = False
+    ap_ssid = None
+    try:
+        cr = subprocess.run(
+            ["comitup-cli", "i"],
+            capture_output=True, text=True, timeout=4,
+        )
+        if cr.returncode == 0:
+            # Output includes lines like "state=HOTSPOT" and "connection=Gridfinity-A2F1"
+            for line in cr.stdout.splitlines():
+                s = line.strip()
+                if s.startswith("state=") and "HOTSPOT" in s.upper():
+                    ap_mode = True
+                if s.startswith("connection=") and ap_mode:
+                    ap_ssid = s.split("=", 1)[1].strip()
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        # comitup-cli not installed (this Pi doesn't have AP bootstrap),
+        # or it hung — fall through to address-based detection.
+        pass
+
+    if not ap_mode:
+        # Address-based fallback: comitup uses 10.41.0.0/24 for its AP
+        try:
+            ar = subprocess.run(
+                ["ip", "-4", "-o", "addr", "show", "dev", "wlan0"],
+                capture_output=True, text=True, timeout=3,
+            )
+            if ar.returncode == 0 and "10.41.0." in ar.stdout:
+                ap_mode = True
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
 
     # Active connections (the NAME field is the connection profile name,
     # which on netplan-managed systems looks like "netplan-wlan0-<SSID>" —
@@ -845,6 +882,8 @@ def wifi_status():
         "wifi": wifi_active,
         "ethernet": ethernet_active,
         "ip": ip_addr,
+        "ap_mode": ap_mode,
+        "ap_ssid": ap_ssid,
     })
 
 
