@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.9.10"  # fix: comitup web_service needs full unit name (comitup-web.service)
+APP_VERSION = "1.10.0"  # WiFi connect: save profile + reboot instead of live-switch
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
@@ -1006,14 +1006,20 @@ def wifi_saved():
 
 @app.route("/api/wifi/connect", methods=["POST"])
 def wifi_connect():
-    """Connect to a WiFi network. Body: {ssid: str, password: str (optional for open)}.
-    The password is sent over HTTPS only. We never log or echo it.
+    """Save WiFi credentials and reboot. We don't try to live-switch from
+    AP mode -> client mode because that race-conditions with comitup's own
+    state machine and frequently leaves the Pi stuck mid-transition.
 
-    If a profile for this SSID already exists (e.g. a netplan-managed one from
-    initial OS setup, or a previous failed connect), we delete it first so that
-    nmcli builds a clean new profile. Otherwise nmcli can fail with cryptic
-    'key-mgmt property is missing' errors when its connect-arg form conflicts
-    with the existing profile's security settings."""
+    Instead:
+      1. Save (or create) the connection profile for this SSID + password
+      2. Mark it autoconnect=yes so comitup picks it up on next boot
+      3. Schedule a reboot in 5 seconds (via systemd-run so we can return
+         a response to the captive portal before going down)
+      4. On reboot, comitup sees the saved profile and connects to it.
+         AP mode goes away naturally.
+
+    The password is sent over HTTPS only. We never log or echo it.
+    """
     ok, _reason = _wifi_available()
     if not ok:
         abort(400, description="WiFi not available on this device")
@@ -1028,8 +1034,9 @@ def wifi_connect():
     if password and (len(password) < 8 or len(password) > 128):
         abort(400, description="password length must be 8-128 chars (WPA requirement)")
 
-    # Pre-clean any existing profile for this SSID. Walk through all profiles
-    # and delete any whose stored 802-11-wireless.ssid matches.
+    # Step 1: Clean up any existing profile for this SSID so we build fresh.
+    # This avoids nmcli's "key-mgmt property is missing" error which happens
+    # when there's a partial profile from a previous attempt.
     list_r = _nmcli("-t", "-f", "NAME,TYPE", "connection", "show")
     if list_r and list_r.returncode == 0:
         for line in list_r.stdout.splitlines():
@@ -1043,27 +1050,57 @@ def wifi_connect():
             if existing_ssid == ssid:
                 _nmcli("connection", "delete", profile_name, timeout=10)
 
-    # Now connect fresh. nmcli will build a new profile.
-    args = ["device", "wifi", "connect", ssid]
+    # Step 2: Add a new connection profile. This stores the SSID and password
+    # but doesn't activate it. We choose security type WPA-PSK if a password
+    # was provided, none otherwise.
+    add_args = [
+        "connection", "add",
+        "type", "wifi",
+        "ifname", "wlan0",
+        "con-name", ssid,
+        "ssid", ssid,
+        "connection.autoconnect", "yes",
+        "connection.autoconnect-priority", "10",
+    ]
     if password:
-        args += ["password", password]
-    r = _nmcli(*args, timeout=45, capture_password=True)
-    if r is None:
-        return jsonify({"ok": False, "error": "nmcli not available or timed out"}), 500
-    if r.returncode != 0:
-        # Sanitize the error
-        err = (r.stderr or r.stdout or "Unknown error").strip()
-        if "Secrets were required" in err or "secrets were required" in err.lower():
-            err = "Wrong password"
-        elif "No network with SSID" in err:
-            err = "Network not found in range"
-        elif "Connection activation failed" in err:
-            err = "Couldn't connect — wrong password or signal too weak"
-        elif "key-mgmt" in err:
-            err = "Couldn't configure network security — try again"
-        return jsonify({"ok": False, "error": err}), 400
+        add_args += [
+            "wifi-sec.key-mgmt", "wpa-psk",
+            "wifi-sec.psk", password,
+        ]
+    r = _nmcli(*add_args, timeout=15, capture_password=True)
+    if r is None or r.returncode != 0:
+        err = (r.stderr if r else "nmcli unavailable") or "profile add failed"
+        return jsonify({"ok": False, "error": err.strip()}), 500
 
-    return jsonify({"ok": True, "ssid": ssid})
+    # Step 3: Schedule a reboot in 5 seconds. systemd-run makes the reboot
+    # command outlive the gunicorn worker so we can return our JSON response
+    # to the captive portal browser first.
+    try:
+        rb = subprocess.run(
+            ["sudo", "-n", "systemd-run",
+             "--unit=gridfinity-reboot-runner",
+             "--collect",
+             "--no-block",
+             "--on-active=5",   # delay 5 seconds before firing
+             "/sbin/reboot"],
+            capture_output=True, text=True, timeout=10,
+        )
+        if rb.returncode != 0:
+            # Fallback: try direct reboot without delay if systemd-run failed
+            subprocess.Popen(
+                ["sudo", "-n", "/sbin/reboot"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+    except Exception:
+        pass
+
+    return jsonify({
+        "ok": True,
+        "ssid": ssid,
+        "rebooting": True,
+        "message": "Saved. The Pi will reboot in 5 seconds and connect to your WiFi.",
+    })
 
 
 @app.route("/api/wifi/saved/<path:ssid>", methods=["DELETE"])

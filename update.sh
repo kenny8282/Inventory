@@ -82,6 +82,16 @@ if ! visudo -c -q -f /etc/sudoers.d/gridfinity-update 2>/dev/null; then
   rm -f /etc/sudoers.d/gridfinity-update
 fi
 
+echo "==> Refreshing reboot sudoers"
+cat > /etc/sudoers.d/gridfinity-reboot <<EOF
+$SERVICE_USER ALL=(ALL) NOPASSWD: /sbin/reboot
+$SERVICE_USER ALL=(ALL) NOPASSWD: /usr/bin/systemd-run --unit=gridfinity-reboot-runner --collect --no-block --on-active=5 /sbin/reboot
+EOF
+chmod 0440 /etc/sudoers.d/gridfinity-reboot
+if ! visudo -c -q -f /etc/sudoers.d/gridfinity-reboot 2>/dev/null; then
+  rm -f /etc/sudoers.d/gridfinity-reboot
+fi
+
 echo "==> Clearing update cache"
 # The cached update-check state is now stale; remove it so the next
 # check returns fresh data.

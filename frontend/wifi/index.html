@@ -251,17 +251,20 @@
       </div>
     </div>
     <div id="connectProgress" style="display:none;">
-      <p style="font-size:13px;color:var(--muted);margin-top:10px;">Connecting…</p>
+      <p style="font-size:13px;color:var(--muted);margin-top:10px;">Saving WiFi settings…</p>
     </div>
     <div id="connectDone" style="display:none;">
       <p style="font-size:13px;margin-top:10px;">
-        ✓ Connected to <strong id="connectedSsid"></strong>
+        ✓ Saved WiFi for <strong id="connectedSsid"></strong>
       </p>
       <div class="warn">
-        You can now unplug the ethernet cable. After unplugging, wait ~30 seconds, then refresh this page from your phone using the new URL.
+        <strong>The Pi is rebooting now.</strong><br>
+        It will join "<span id="rebootSsid"></span>" after restart (about 60 seconds).
+        Then reconnect your phone or computer to your normal WiFi and visit
+        <span class="mono">https://gridfinity.local/</span>
       </div>
       <div class="actions">
-        <button onclick="closeConnect(); refreshAll();">Done</button>
+        <button onclick="window.close()">Close</button>
       </div>
     </div>
   </div>
@@ -436,10 +439,13 @@ async function doConnect() {
     el('connectProgress').style.display = 'none';
     if (d.ok) {
       el('connectedSsid').textContent = net.ssid;
+      el('rebootSsid').textContent = net.ssid;
       el('connectDone').style.display = 'block';
+      // The Pi will reboot in ~5 seconds. Polling /api/wifi/status after that
+      // will fail (the AP is going down). Don't try to refresh anything.
     } else {
       el('connectForm').style.display = 'block';
-      el('connectError').innerHTML = `<div class="error">${esc(d.error || 'Connection failed')}</div>`;
+      el('connectError').innerHTML = `<div class="error">${esc(d.error || 'Save failed')}</div>`;
     }
   } catch(e) {
     el('connectProgress').style.display = 'none';
