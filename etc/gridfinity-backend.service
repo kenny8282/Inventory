@@ -19,9 +19,10 @@ Restart=always
 RestartSec=3
 
 # Security hardening
+# (NoNewPrivileges=true would block sudo nmcli and sudo systemd-run, so we
+#  leave it off and rely on the narrow sudoers rule to limit blast radius.)
 ProtectSystem=full
 ProtectHome=true
-NoNewPrivileges=true
 ReadWritePaths=/var/lib/gridfinity
 
 [Install]
