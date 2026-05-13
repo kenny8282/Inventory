@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.9.5"  # fix: remove --precut flag (not in farixembedded fork)
+APP_VERSION = "1.9.6"  # hide comitup-* internal AP profiles from saved networks list
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
@@ -964,7 +964,11 @@ def _resolve_ssid_for_profile(profile_name, device_name=None):
 @app.route("/api/wifi/saved", methods=["GET"])
 def wifi_saved():
     """List saved (autoconnect) WiFi profiles. Display name is the actual SSID,
-    not the netplan-mangled profile name."""
+    not the netplan-mangled profile name.
+
+    Filters out comitup's internal AP profiles (e.g. 'comitup-203') and any
+    hotspot/AP profiles — these are infrastructure, not user-chosen networks,
+    and showing them confuses the user."""
     ok, _reason = _wifi_available()
     if not ok:
         return jsonify({"available": False, "networks": []})
@@ -979,6 +983,18 @@ def wifi_saved():
         if len(parts) < 3: continue
         profile_name, ctype, autoconnect = parts[0], parts[1], parts[2]
         if ctype != "802-11-wireless": continue
+
+        # Skip comitup's internal AP profiles
+        if profile_name.startswith("comitup-"):
+            continue
+
+        # Skip any profile in AP/hotspot mode (we manage those, not the user)
+        mr = _nmcli("-t", "-f", "802-11-wireless.mode", "connection", "show", profile_name)
+        if mr and mr.returncode == 0:
+            mode = (mr.stdout or "").strip().split(":", 1)[-1].lower()
+            if mode in ("ap", "adhoc"):
+                continue
+
         ssid = _resolve_ssid_for_profile(profile_name)
         out.append({
             "name": ssid,                # what we DISPLAY to the user
