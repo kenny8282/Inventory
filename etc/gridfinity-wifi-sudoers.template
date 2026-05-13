@@ -1,0 +1,13 @@
+# Gridfinity backend — allows nmcli wifi management without a password.
+# Scoped narrowly so it can only manage networks, not the whole system.
+#
+# The %s gets substituted with the actual service user at install time.
+
+%s ALL=(ALL) NOPASSWD: /usr/bin/nmcli device wifi list
+%s ALL=(ALL) NOPASSWD: /usr/bin/nmcli device wifi rescan
+%s ALL=(ALL) NOPASSWD: /usr/bin/nmcli device wifi connect *
+%s ALL=(ALL) NOPASSWD: /usr/bin/nmcli connection show
+%s ALL=(ALL) NOPASSWD: /usr/bin/nmcli connection show --active
+%s ALL=(ALL) NOPASSWD: /usr/bin/nmcli connection delete *
+%s ALL=(ALL) NOPASSWD: /usr/bin/nmcli -t * device *
+%s ALL=(ALL) NOPASSWD: /usr/bin/nmcli -t * connection *

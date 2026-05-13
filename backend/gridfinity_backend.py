@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.5.2"  # per-label print timeout 30s -> 60s for batch reliability
+APP_VERSION = "1.7.0"  # update check + WiFi AP-mode bootstrap support
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
@@ -692,6 +692,444 @@ def _json_error(e):
         "error": getattr(e, "name", "error"),
         "message": getattr(e, "description", str(e)),
     }), getattr(e, "code", 500)
+
+
+# ============================================================================
+# WIFI MANAGEMENT (NetworkManager via nmcli)
+# ============================================================================
+# Lets the user configure WiFi from the web UI so the Pi can run wireless after
+# initial ethernet bootstrap. Uses nmcli, which is the default on Pi OS Bookworm.
+# Older systems using dhcpcd will see "not supported" responses.
+#
+# Security:
+#   - nmcli is invoked via sudo with a narrow sudoers stub (/etc/sudoers.d/...)
+#   - passwords are NEVER logged or echoed back; on error we return generic msgs
+#   - enterprise (802.1X) networks are filtered out of scan results
+
+import re
+import shlex
+
+
+def _nmcli(*args, timeout=15, capture_password=False):
+    """Run an nmcli subcommand via sudo. Returns CompletedProcess.
+    If capture_password is True, the args list contains a password that must
+    NEVER be logged or echoed; we redact it from any error output."""
+    cmd = ["sudo", "-n", "nmcli"] + list(args)
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return None
+    except FileNotFoundError:
+        return None
+    # Redact the password from stderr if it appears
+    if capture_password and r.stderr:
+        for arg in args:
+            if "password" in arg.lower() or len(arg) > 7:
+                r.stderr = r.stderr.replace(arg, "***")
+    return r
+
+
+_WIFI_CACHE = {"value": None, "ts": 0, "reason": ""}
+
+
+def _wifi_available():
+    """Check whether nmcli + a wifi device are present.
+    Returns (bool, reason_string). The reason explains why if unavailable."""
+    import time
+    now = time.time()
+    if _WIFI_CACHE["value"] is True and now - _WIFI_CACHE["ts"] < 30:
+        return True, "ok"
+    if _WIFI_CACHE["value"] is False and now - _WIFI_CACHE["ts"] < 5:
+        return False, _WIFI_CACHE["reason"]
+    r = _nmcli("-t", "-f", "TYPE", "device")
+    if r is None:
+        reason = "nmcli not installed or subprocess failed (NoNewPrivileges blocks sudo?)"
+        _WIFI_CACHE.update(value=False, ts=now, reason=reason)
+        return False, reason
+    if r.returncode != 0:
+        err = (r.stderr or "").strip()[:160]
+        if "sudo: a password is required" in err.lower() or "no tty" in err.lower():
+            reason = "passwordless sudo for nmcli not configured"
+        elif "no new privileges" in err.lower() or "operation not permitted" in err.lower():
+            reason = "NoNewPrivileges=true in systemd unit blocks sudo"
+        else:
+            reason = f"nmcli exit {r.returncode}: {err or 'no error message'}"
+        _WIFI_CACHE.update(value=False, ts=now, reason=reason)
+        return False, reason
+    has_wifi = any(line.strip() == "wifi" for line in r.stdout.splitlines())
+    reason = "ok" if has_wifi else "no wifi device in nmcli output"
+    _WIFI_CACHE.update(value=has_wifi, ts=now, reason=reason)
+    return has_wifi, reason
+
+
+@app.route("/api/wifi/status", methods=["GET"])
+def wifi_status():
+    """Current connection state: which network are we on, signal, IP, mode."""
+    ok, _reason = _wifi_available()
+    if not ok:
+        return jsonify({"available": False, "reason": _reason})
+
+    # Active connections (the NAME field is the connection profile name,
+    # which on netplan-managed systems looks like "netplan-wlan0-<SSID>" —
+    # not the user-facing SSID. We'll resolve the real SSID below.)
+    r = _nmcli("-t", "-f", "NAME,TYPE,DEVICE", "connection", "show", "--active")
+    if r is None or r.returncode != 0:
+        return jsonify({"available": True, "connected": False, "error": "nmcli failed"})
+
+    wifi_profile = None  # the connection profile name (may be netplan-wlan0-XXX)
+    ethernet_active = None
+    for line in r.stdout.splitlines():
+        parts = line.split(":")
+        if len(parts) < 3: continue
+        name, ctype, device = parts[0], parts[1], parts[2]
+        if ctype == "802-11-wireless":
+            wifi_profile = {"profile": name, "device": device}
+        elif ctype == "802-3-ethernet":
+            ethernet_active = {"name": name, "device": device}
+
+    # Pull current IP for whatever's primary
+    ip_addr = None
+    try:
+        rip = subprocess.run(["hostname", "-I"], capture_output=True, text=True, timeout=3)
+        ip_addr = (rip.stdout or "").strip().split()[0] if rip.stdout.strip() else None
+    except Exception:
+        pass
+
+    # Resolve the real SSID and signal % from the active wifi (if any).
+    # We use 'device wifi list' which returns the actual broadcast SSID,
+    # then filter to the row marked as in-use (*).
+    wifi_active = None
+    if wifi_profile:
+        ssid = None
+        signal = None
+        rs = _nmcli("-t", "-f", "IN-USE,SIGNAL,SSID", "device", "wifi", "list")
+        if rs and rs.returncode == 0:
+            for line in rs.stdout.splitlines():
+                # Format: IN-USE:SIGNAL:SSID. SSID may have colons (escaped with \)
+                fields = re.split(r"(?<!\\):", line, maxsplit=2)
+                if len(fields) >= 3 and fields[0].strip() == "*":
+                    try:
+                        signal = int(fields[1])
+                    except ValueError:
+                        pass
+                    ssid = fields[2].replace("\\:", ":").strip()
+                    break
+
+        # Fallback: ask nmcli for the SSID stored in the connection profile
+        if not ssid:
+            rp = _nmcli("-t", "-f", "802-11-wireless.ssid", "connection", "show", wifi_profile["profile"])
+            if rp and rp.returncode == 0:
+                out = (rp.stdout or "").strip()
+                if ":" in out:
+                    ssid = out.split(":", 1)[1].strip()
+
+        # Last resort: strip the netplan- prefix from the profile name
+        if not ssid:
+            prof = wifi_profile["profile"]
+            if prof.startswith("netplan-"):
+                # Format is "netplan-<device>-<ssid>", but device name may have hyphens
+                # Trim "netplan-" then trim the leading device name
+                tail = prof[len("netplan-"):]
+                if tail.startswith(wifi_profile["device"] + "-"):
+                    ssid = tail[len(wifi_profile["device"]) + 1:]
+                else:
+                    ssid = tail
+            else:
+                ssid = prof
+
+        wifi_active = {"ssid": ssid, "device": wifi_profile["device"], "signal": signal}
+
+    return jsonify({
+        "available": True,
+        "connected": bool(wifi_active or ethernet_active),
+        "wifi": wifi_active,
+        "ethernet": ethernet_active,
+        "ip": ip_addr,
+    })
+
+
+@app.route("/api/wifi/scan", methods=["GET"])
+def wifi_scan():
+    """Scan for nearby networks. Filters out enterprise (802.1X)."""
+    ok, _reason = _wifi_available()
+    if not ok:
+        return jsonify({"available": False, "networks": []})
+
+    # Force a rescan then list
+    _nmcli("device", "wifi", "rescan", timeout=8)
+    r = _nmcli("-t", "-f", "SSID,SIGNAL,SECURITY,IN-USE", "device", "wifi", "list")
+    if r is None or r.returncode != 0:
+        return jsonify({"available": True, "networks": [], "error": "scan failed"})
+
+    seen = {}  # dedupe by SSID, keep strongest signal
+    for line in r.stdout.splitlines():
+        # Fields: SSID:SIGNAL:SECURITY:IN-USE
+        # nmcli escapes colons in SSID with backslash; split with negative lookbehind
+        parts = re.split(r"(?<!\\):", line)
+        if len(parts) < 4: continue
+        ssid = parts[0].replace("\\:", ":").strip()
+        if not ssid or ssid == "--":
+            continue
+        try:
+            signal = int(parts[1])
+        except ValueError:
+            signal = 0
+        security = (parts[2] or "").strip()
+        in_use = parts[3].strip() == "*"
+        # Skip enterprise/802.1X networks - they need extra setup
+        if "802.1X" in security or "WPA-EAP" in security or "EAP" in security:
+            continue
+        # Dedupe
+        if ssid in seen and seen[ssid]["signal"] >= signal:
+            continue
+        seen[ssid] = {
+            "ssid": ssid,
+            "signal": signal,
+            "security": security or "Open",
+            "secured": bool(security and security != "--"),
+            "in_use": in_use,
+        }
+
+    networks = sorted(seen.values(), key=lambda n: -n["signal"])
+    return jsonify({"available": True, "networks": networks})
+
+
+@app.route("/api/wifi/saved", methods=["GET"])
+def wifi_saved():
+    """List saved (autoconnect) WiFi profiles."""
+    ok, _reason = _wifi_available()
+    if not ok:
+        return jsonify({"available": False, "networks": []})
+
+    r = _nmcli("-t", "-f", "NAME,TYPE,AUTOCONNECT", "connection", "show")
+    if r is None or r.returncode != 0:
+        return jsonify({"available": True, "networks": [], "error": "list failed"})
+
+    out = []
+    for line in r.stdout.splitlines():
+        parts = line.split(":")
+        if len(parts) < 3: continue
+        name, ctype, autoconnect = parts[0], parts[1], parts[2]
+        if ctype != "802-11-wireless": continue
+        out.append({
+            "name": name,
+            "autoconnect": autoconnect.lower() == "yes",
+        })
+    return jsonify({"available": True, "networks": out})
+
+
+@app.route("/api/wifi/connect", methods=["POST"])
+def wifi_connect():
+    """Connect to a WiFi network. Body: {ssid: str, password: str (optional for open)}.
+    The password is sent over HTTPS only. We never log or echo it."""
+    ok, _reason = _wifi_available()
+    if not ok:
+        abort(400, description="WiFi not available on this device")
+
+    body = request.get_json(silent=True) or {}
+    ssid = (body.get("ssid") or "").strip()
+    password = body.get("password") or ""
+    if not ssid:
+        abort(400, description="ssid required")
+    if len(ssid) > 64:
+        abort(400, description="ssid too long")
+    if password and (len(password) < 8 or len(password) > 128):
+        abort(400, description="password length must be 8-128 chars (WPA requirement)")
+
+    # Build args. nmcli accepts spaces in ssid as a single arg.
+    args = ["device", "wifi", "connect", ssid]
+    if password:
+        args += ["password", password]
+    r = _nmcli(*args, timeout=45, capture_password=True)
+    if r is None:
+        return jsonify({"ok": False, "error": "nmcli not available or timed out"}), 500
+    if r.returncode != 0:
+        # Sanitize the error
+        err = (r.stderr or r.stdout or "Unknown error").strip()
+        if "Secrets were required" in err or "secrets were required" in err.lower():
+            err = "Wrong password"
+        elif "No network with SSID" in err:
+            err = "Network not found in range"
+        elif "Connection activation failed" in err:
+            err = "Couldn't connect — wrong password or signal too weak"
+        return jsonify({"ok": False, "error": err}), 400
+
+    return jsonify({"ok": True, "ssid": ssid})
+
+
+@app.route("/api/wifi/saved/<path:ssid>", methods=["DELETE"])
+def wifi_forget(ssid):
+    """Forget a saved WiFi network."""
+    ok, _reason = _wifi_available()
+    if not ok:
+        abort(400, description="WiFi not available")
+    ssid = ssid.strip()
+    if not ssid:
+        abort(400, description="ssid required")
+    r = _nmcli("connection", "delete", ssid, timeout=10)
+    if r is None or r.returncode != 0:
+        err = (r.stderr if r else "no nmcli") or "delete failed"
+        return jsonify({"ok": False, "error": err.strip()}), 400
+    return jsonify({"ok": True})
+
+
+# ============================================================================
+# UPDATE SYSTEM
+# ============================================================================
+# The Pi keeps a persistent git clone at /opt/gridfinity/src/. We can check
+# whether origin/main has commits we don't have, and apply them via update.sh.
+#
+# Update state is cached at /var/lib/gridfinity/update-cache.json so the home
+# page doesn't have to hit GitHub on every load. A daily cron refreshes it,
+# but users can force a check via /api/system/update-check?refresh=1.
+
+SRC_DIR = "/opt/gridfinity/src"
+UPDATE_CACHE = DATA_DIR / "update-cache.json"
+UPDATE_SCRIPT = "/opt/gridfinity/update.sh"
+
+
+def _git(*args, cwd=SRC_DIR, timeout=15):
+    """Run a git subcommand in the src dir. Returns CompletedProcess or None."""
+    try:
+        return subprocess.run(
+            ["git"] + list(args),
+            cwd=cwd, capture_output=True, text=True, timeout=timeout,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return None
+
+
+def _git_short(commit):
+    return (commit or "")[:7]
+
+
+def _read_update_cache():
+    """Read the cached update state. Returns dict or None."""
+    try:
+        with open(UPDATE_CACHE, "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+
+
+def _write_update_cache(data):
+    """Persist update state to disk."""
+    try:
+        with open(UPDATE_CACHE, "w") as f:
+            json.dump(data, f)
+    except OSError:
+        pass
+
+
+def _check_for_updates(do_fetch=True):
+    """Probe the local git clone for available updates.
+    Returns a dict with the current state, suitable for caching and serving
+    to the home page."""
+    import time
+
+    if not Path(SRC_DIR).exists():
+        return {
+            "available": False,
+            "supported": False,
+            "reason": "No git source directory at /opt/gridfinity/src — install via newer install.sh",
+            "checked_at": int(time.time()),
+        }
+
+    if do_fetch:
+        # Try to fetch the latest refs from origin. If offline, we'll fall
+        # back to whatever the last fetch saw.
+        _git("fetch", "--quiet", "origin", timeout=20)
+
+    r_local = _git("rev-parse", "HEAD")
+    r_remote = _git("rev-parse", "origin/main")
+    if not r_local or not r_remote or r_local.returncode != 0 or r_remote.returncode != 0:
+        return {
+            "available": False,
+            "supported": True,
+            "reason": "Could not read git refs (no network?)",
+            "checked_at": int(time.time()),
+        }
+
+    local = r_local.stdout.strip()
+    remote = r_remote.stdout.strip()
+
+    # How many commits is local behind?
+    r_count = _git("rev-list", "--count", f"{local}..{remote}")
+    behind = 0
+    if r_count and r_count.returncode == 0:
+        try:
+            behind = int(r_count.stdout.strip())
+        except ValueError:
+            behind = 0
+
+    # Try to pull a remote version string from backend file if it differs.
+    # We grep for the APP_VERSION assignment in the remote file via git show.
+    remote_version = None
+    r_show = _git("show", f"origin/main:backend/gridfinity_backend.py")
+    if r_show and r_show.returncode == 0:
+        import re as _re
+        m = _re.search(r'^APP_VERSION\s*=\s*"([^"]+)"', r_show.stdout, _re.MULTILINE)
+        if m:
+            remote_version = m.group(1)
+
+    return {
+        "available": behind > 0,
+        "supported": True,
+        "current_hash": _git_short(local),
+        "latest_hash": _git_short(remote),
+        "commits_behind": behind,
+        "current_version": APP_VERSION,
+        "latest_version": remote_version or APP_VERSION,
+        "checked_at": int(time.time()),
+    }
+
+
+@app.route("/api/system/update-check", methods=["GET"])
+def system_update_check():
+    """Return cached update status, or refresh if ?refresh=1."""
+    refresh = request.args.get("refresh", "").lower() in ("1", "true", "yes")
+    if refresh:
+        data = _check_for_updates(do_fetch=True)
+        _write_update_cache(data)
+        return jsonify(data)
+    # Serve from cache if recent (less than 24h), else refresh
+    cache = _read_update_cache()
+    import time
+    if cache and (int(time.time()) - cache.get("checked_at", 0)) < 86400:
+        cache["from_cache"] = True
+        return jsonify(cache)
+    data = _check_for_updates(do_fetch=True)
+    _write_update_cache(data)
+    return jsonify(data)
+
+
+@app.route("/api/system/update", methods=["POST"])
+def system_update():
+    """Run update.sh. The service will restart mid-call so the response
+    may never reach the client — that's expected. The client should poll
+    /api/health afterwards to detect when it comes back up."""
+    if not Path(UPDATE_SCRIPT).exists():
+        return jsonify({"ok": False, "error": "update.sh not present — run a fresh install"}), 500
+
+    # Spawn detached so we don't block on output. The script restarts the
+    # service which will kill us anyway, so just fire-and-forget.
+    try:
+        subprocess.Popen(
+            ["sudo", "-n", "bash", UPDATE_SCRIPT],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+    # Clear the cache so next check picks up the new version
+    try:
+        UPDATE_CACHE.unlink()
+    except FileNotFoundError:
+        pass
+
+    return jsonify({"ok": True, "message": "Update started — service will restart in ~10s"})
 
 
 if __name__ == "__main__":

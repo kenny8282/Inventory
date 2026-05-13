@@ -50,7 +50,21 @@
     letter-spacing: -0.025em;
     text-transform: uppercase;
   }
+  h1 a { color: inherit; text-decoration: none; }
   h1 .accent { color: var(--accent); }
+  header .home-link {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    border: 1px solid var(--muted);
+    padding: 4px 8px;
+    font-weight: 700;
+    font-family: 'Archivo', sans-serif;
+    align-self: flex-start;
+  }
+  header .home-link:hover { color: var(--ink); border-color: var(--ink); }
   h1 small {
     display: block;
     font-size: 10px;
@@ -507,8 +521,9 @@
 
   <!-- HEADER -->
   <header>
+    <a href="/" class="home-link">← Home</a>
     <h1>
-      GRIDFINITY <span class="accent">//</span> LABEL FORGE
+      <a href="/">GRIDFINITY <span class="accent">//</span> LABEL FORGE</a>
       <small>BATCH LABEL MAKER · UNIQUE-ID INVENTORY · v1 SCHEMA</small>
     </h1>
     <div class="meta">

@@ -117,6 +117,105 @@
     font-weight: 700;
   }
   .tile:hover .meta { color: white; }
+  .tile.small h2 { font-size: 18px; }
+  .tile.small .icon { font-size: 32px; margin-bottom: 10px; }
+  .tile.small .desc { font-size: 11px; margin-bottom: 10px; }
+  /* ---- WIFI ONBOARDING BANNER ---- */
+  .wifi-onboard {
+    background: var(--paper);
+    border: 2px solid var(--accent-2);
+    padding: 16px 18px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .wifi-onboard.hidden { display: none; }
+  .onboard-icon { font-size: 32px; flex-shrink: 0; }
+  .onboard-text { flex: 1; min-width: 200px; font-size: 13px; line-height: 1.4; }
+  .onboard-text strong {
+    font-family: 'Archivo', sans-serif;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .onboard-text div { color: var(--muted); }
+  .onboard-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .onboard-btn {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 8px 14px;
+    background: var(--paper);
+    color: var(--ink);
+    border: 1.5px solid var(--ink);
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .onboard-btn.primary { background: var(--accent-2); color: var(--paper); border-color: var(--accent-2); }
+  .onboard-btn:hover { background: var(--ink); color: var(--paper); }
+  .onboard-btn.primary:hover { background: var(--ink); border-color: var(--ink); }
+  /* ---- UPDATE BANNER ---- */
+  .update-banner {
+    background: var(--paper);
+    border: 2px solid var(--accent);
+    padding: 16px 18px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .update-banner.hidden { display: none; }
+  .update-icon { font-size: 28px; flex-shrink: 0; color: var(--accent); font-weight: 900; }
+  .update-text { flex: 1; min-width: 200px; font-size: 13px; line-height: 1.4; }
+  .update-text strong {
+    font-family: 'Archivo', sans-serif;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .update-text div { color: var(--muted); }
+  .update-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .update-btn {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 8px 14px;
+    background: var(--paper);
+    color: var(--ink);
+    border: 1.5px solid var(--ink);
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .update-btn.primary { background: var(--accent); color: var(--paper); border-color: var(--accent); }
+  .update-btn:disabled { opacity: 0.5; cursor: wait; }
+  .update-btn:hover:not(:disabled) { background: var(--ink); color: var(--paper); }
+  .update-btn.primary:hover:not(:disabled) { background: var(--ink); border-color: var(--ink); }
+  /* ---- CHECK FOR UPDATES BUTTON in footer ---- */
+  .check-updates {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+  }
+  .check-updates:hover { color: var(--ink); }
+  .check-updates:disabled { cursor: wait; opacity: 0.6; }
   .stats {
     background: var(--paper);
     border: 1.5px solid var(--ink);
@@ -180,6 +279,38 @@
     </h1>
   </header>
 
+  <div id="updateBanner" class="update-banner hidden">
+    <div class="update-icon">⬆</div>
+    <div class="update-text">
+      <strong>Update available</strong>
+      <div id="updateVersionText">A newer version of Gridfinity is ready to install.</div>
+    </div>
+    <div class="update-actions">
+      <button class="update-btn primary" id="updateNowBtn" onclick="runUpdate()">Update Now</button>
+      <button class="update-btn" onclick="dismissUpdateBanner()">Later</button>
+    </div>
+  </div>
+
+  <div id="updateProgress" class="update-banner hidden" style="border-color: var(--green);">
+    <div class="update-icon">↻</div>
+    <div class="update-text">
+      <strong>Updating…</strong>
+      <div id="updateProgressText">The service will restart in about 10 seconds. This page will reload when it's back up.</div>
+    </div>
+  </div>
+
+  <div id="wifiOnboardBanner" class="wifi-onboard hidden">
+    <div class="onboard-icon">📡</div>
+    <div class="onboard-text">
+      <strong>Set up WiFi?</strong>
+      <div>So you can unplug the ethernet cable and place the Pi anywhere.</div>
+    </div>
+    <div class="onboard-actions">
+      <a href="/wifi/" class="onboard-btn primary">Set up WiFi</a>
+      <button class="onboard-btn" onclick="dismissWifiOnboard()">Skip</button>
+    </div>
+  </div>
+
   <div class="grid">
     <a href="/forge/" class="tile">
       <span class="icon">⎙</span>
@@ -192,6 +323,12 @@
       <h2>Inventory</h2>
       <div class="desc">Scan QR codes, track containers and bins, see what's where. Phone-friendly with camera scan.</div>
       <div class="meta">Open Inventory →</div>
+    </a>
+    <a href="/wifi/" class="tile small">
+      <span class="icon">📡</span>
+      <h2>WiFi</h2>
+      <div class="desc" id="wifiStatusDesc">Configure wireless networks.</div>
+      <div class="meta">Open Settings →</div>
     </a>
   </div>
 
@@ -219,11 +356,127 @@
 
   <div class="footer">
     SCHEMA: <span class="schema">gridfinity-inventory/v1</span> ·
-    BACKEND: <span id="version">checking…</span>
+    BACKEND: <span id="version">checking…</span> ·
+    <button class="check-updates" id="checkUpdatesBtn" onclick="manualUpdateCheck()">Check for updates</button>
   </div>
 </div>
 
 <script>
+const WIFI_SKIP_KEY = 'gridfinity:wifi_onboard_skipped';
+const UPDATE_DISMISS_KEY = 'gridfinity:update_dismissed_hash';
+
+function dismissWifiOnboard() {
+  try { localStorage.setItem(WIFI_SKIP_KEY, '1'); } catch(e){}
+  document.getElementById('wifiOnboardBanner').classList.add('hidden');
+}
+
+/* Hide the update banner. Remember which version we dismissed so we don't
+   nag again about the same release. */
+function dismissUpdateBanner() {
+  const banner = document.getElementById('updateBanner');
+  const hash = banner.dataset.hash;
+  if (hash) {
+    try { localStorage.setItem(UPDATE_DISMISS_KEY, hash); } catch(e){}
+  }
+  banner.classList.add('hidden');
+}
+
+/* Check the backend for available updates. If `silent` is false, surface
+   results to the user (used by the manual button). */
+async function checkForUpdates(refresh, silent) {
+  try {
+    const url = '/api/system/update-check' + (refresh ? '?refresh=1' : '');
+    const r = await fetch(url);
+    const d = await r.json();
+    const banner = document.getElementById('updateBanner');
+    if (!d.supported) {
+      if (!silent) alert('This Pi was set up before update support — to enable, re-run install.sh once.');
+      return d;
+    }
+    if (d.available) {
+      const dismissed = (() => { try { return localStorage.getItem(UPDATE_DISMISS_KEY); } catch(e){ return null; } })();
+      // Show banner unless user already dismissed THIS exact version
+      if (dismissed !== d.latest_hash) {
+        banner.classList.remove('hidden');
+        banner.dataset.hash = d.latest_hash;
+        const cur = d.current_version || 'current';
+        const next = d.latest_version || 'newer';
+        const commitInfo = d.commits_behind > 1 ? ` (${d.commits_behind} commits)` : '';
+        document.getElementById('updateVersionText').textContent =
+          `v${cur} → v${next}${commitInfo}. Click below to install.`;
+      }
+      if (!silent) {
+        // Even if banner was dismissed earlier, manual check re-shows it
+        banner.classList.remove('hidden');
+      }
+    } else {
+      banner.classList.add('hidden');
+      if (!silent) alert('You\'re on the latest version.');
+    }
+    return d;
+  } catch(e) {
+    if (!silent) alert('Could not check for updates: ' + e.message);
+    return null;
+  }
+}
+
+async function manualUpdateCheck() {
+  const btn = document.getElementById('checkUpdatesBtn');
+  btn.disabled = true;
+  btn.textContent = 'Checking…';
+  try {
+    await checkForUpdates(true, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Check for updates';
+  }
+}
+
+/* Trigger the update. The service will restart mid-call so the request
+   probably won't even return. We then poll /api/health until the new
+   version comes back, and reload the page. */
+async function runUpdate() {
+  if (!confirm('Update Gridfinity now? The service will restart and this page will reload when it\'s back up.')) {
+    return;
+  }
+  const btn = document.getElementById('updateNowBtn');
+  btn.disabled = true;
+  btn.textContent = 'Starting…';
+
+  // Hide the original banner, show the progress banner
+  document.getElementById('updateBanner').classList.add('hidden');
+  document.getElementById('updateProgress').classList.remove('hidden');
+
+  // Fire the update request — we may or may not get a response
+  fetch('/api/system/update', { method: 'POST' }).catch(() => {});
+
+  // Poll /api/health every 2s. Once it comes back with the new version,
+  // reload the page. Cap at 90s of waiting.
+  const startedAt = Date.now();
+  const startVersion = document.getElementById('version').textContent;
+  const poll = async () => {
+    if (Date.now() - startedAt > 90000) {
+      document.getElementById('updateProgressText').textContent =
+        'Update is taking longer than expected. Try refreshing the page in a moment.';
+      return;
+    }
+    try {
+      const h = await fetch('/api/health', { cache: 'no-store' }).then(r => r.json());
+      const newVersion = 'v' + h.version;
+      // Wait until the version actually changed OR until we've waited at least 10s
+      if (newVersion !== startVersion || (Date.now() - startedAt > 10000)) {
+        document.getElementById('updateProgressText').textContent = 'Update complete — reloading…';
+        setTimeout(() => location.reload(), 800);
+        return;
+      }
+    } catch(e) {
+      // Service is restarting — keep polling
+    }
+    setTimeout(poll, 2000);
+  };
+  setTimeout(poll, 3000);
+}
+
 (async () => {
   try {
     const h = await fetch('/api/health').then(r => r.json());
@@ -237,6 +490,30 @@
     document.getElementById('binCount').textContent = s.counts.bin ?? 0;
     document.getElementById('containerCount').textContent = s.counts.container ?? 0;
     document.getElementById('homelessCount').textContent = s.homeless_containers ?? 0;
+  } catch(e) {}
+
+  // Update check (cached — doesn't hit GitHub on every load, runs from cache
+  // if fresh-enough, refreshes otherwise)
+  checkForUpdates(false, true);
+
+  // WiFi onboarding logic:
+  // Show banner only if (a) wifi is available, (b) NOT already on wifi, (c) user hasn't skipped
+  try {
+    const w = await fetch('/api/wifi/status').then(r => r.json());
+    const descEl = document.getElementById('wifiStatusDesc');
+    if (!w.available) {
+      if (descEl) descEl.textContent = 'No WiFi adapter detected on this device.';
+    } else if (w.wifi && w.wifi.ssid) {
+      if (descEl) descEl.textContent = `Connected to "${w.wifi.ssid}"${w.wifi.signal ? ' · ' + w.wifi.signal + '%' : ''}.`;
+    } else if (w.ethernet) {
+      if (descEl) descEl.textContent = 'On ethernet — tap to add WiFi for wireless use.';
+      const skipped = localStorage.getItem(WIFI_SKIP_KEY) === '1';
+      if (!skipped) {
+        document.getElementById('wifiOnboardBanner').classList.remove('hidden');
+      }
+    } else {
+      if (descEl) descEl.textContent = 'Not connected to any network.';
+    }
   } catch(e) {}
 })();
 </script>

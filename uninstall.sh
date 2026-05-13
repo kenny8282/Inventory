@@ -23,7 +23,10 @@ nginx -t >/dev/null 2>&1 && systemctl reload nginx || true
 
 echo "==> Removing web files"
 rm -f /var/www/html/index.html
-rm -rf /var/www/html/forge /var/www/html/inventory
+rm -rf /var/www/html/forge /var/www/html/inventory /var/www/html/wifi
+
+echo "==> Removing WiFi sudoers rule"
+rm -f /etc/sudoers.d/gridfinity-wifi
 
 echo "==> Removing app directory"
 rm -rf /opt/gridfinity
@@ -46,4 +49,4 @@ else
 fi
 
 echo
-echo "✓ Uninstalled."
+echo "âœ“ Uninstalled."
