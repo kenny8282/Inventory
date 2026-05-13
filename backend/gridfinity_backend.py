@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.7.6"  # fix: remove NoNewPrivileges, simplify wifi sudoers
+APP_VERSION = "1.7.6"  # fix: real SSID in saved list, NoNewPrivileges off, simpler wifi sudoers
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
@@ -894,9 +894,42 @@ def wifi_scan():
     return jsonify({"available": True, "networks": networks})
 
 
+def _resolve_ssid_for_profile(profile_name, device_name=None):
+    """Given a NetworkManager connection profile name, return the actual SSID.
+    On netplan-managed systems the profile name is something like
+    'netplan-wlan0-MyNetwork' instead of just 'MyNetwork'.
+
+    Strategy: ask nmcli for the profile's 802-11-wireless.ssid setting.
+    Fall back to stripping the 'netplan-<device>-' prefix if that fails."""
+    # Primary: query nmcli for the stored SSID
+    r = _nmcli("-t", "-f", "802-11-wireless.ssid", "connection", "show", profile_name)
+    if r and r.returncode == 0:
+        # Output is "802-11-wireless.ssid:MyNetwork"
+        line = (r.stdout or "").strip()
+        if ":" in line:
+            ssid = line.split(":", 1)[1].strip()
+            if ssid:
+                return ssid
+
+    # Fallback: strip netplan prefix
+    if profile_name.startswith("netplan-"):
+        tail = profile_name[len("netplan-"):]
+        if device_name and tail.startswith(device_name + "-"):
+            return tail[len(device_name) + 1:]
+        # Strip any 'wlanN-' prefix as a generic fallback
+        import re as _re
+        m = _re.match(r"^wlan\d+-(.+)$", tail)
+        if m:
+            return m.group(1)
+        return tail
+
+    return profile_name
+
+
 @app.route("/api/wifi/saved", methods=["GET"])
 def wifi_saved():
-    """List saved (autoconnect) WiFi profiles."""
+    """List saved (autoconnect) WiFi profiles. Display name is the actual SSID,
+    not the netplan-mangled profile name."""
     ok, _reason = _wifi_available()
     if not ok:
         return jsonify({"available": False, "networks": []})
@@ -909,10 +942,12 @@ def wifi_saved():
     for line in r.stdout.splitlines():
         parts = line.split(":")
         if len(parts) < 3: continue
-        name, ctype, autoconnect = parts[0], parts[1], parts[2]
+        profile_name, ctype, autoconnect = parts[0], parts[1], parts[2]
         if ctype != "802-11-wireless": continue
+        ssid = _resolve_ssid_for_profile(profile_name)
         out.append({
-            "name": name,
+            "name": ssid,                # what we DISPLAY to the user
+            "profile": profile_name,     # what we PASS BACK for forget/edit ops
             "autoconnect": autoconnect.lower() == "yes",
         })
     return jsonify({"available": True, "networks": out})
@@ -959,18 +994,36 @@ def wifi_connect():
 
 @app.route("/api/wifi/saved/<path:ssid>", methods=["DELETE"])
 def wifi_forget(ssid):
-    """Forget a saved WiFi network."""
+    """Forget a saved WiFi network. The URL param is treated as either the
+    nmcli profile name OR the SSID — we try the literal value first, and if
+    that doesn't match anything, we look up the profile by SSID."""
     ok, _reason = _wifi_available()
     if not ok:
         abort(400, description="WiFi not available")
-    ssid = ssid.strip()
-    if not ssid:
+    target = ssid.strip()
+    if not target:
         abort(400, description="ssid required")
-    r = _nmcli("connection", "delete", ssid, timeout=10)
-    if r is None or r.returncode != 0:
-        err = (r.stderr if r else "no nmcli") or "delete failed"
-        return jsonify({"ok": False, "error": err.strip()}), 400
-    return jsonify({"ok": True})
+
+    # Try the literal target first (might be the profile name already)
+    r = _nmcli("connection", "delete", target, timeout=10)
+    if r and r.returncode == 0:
+        return jsonify({"ok": True})
+
+    # That failed - the target might be the SSID, so resolve to a profile name
+    list_r = _nmcli("-t", "-f", "NAME,TYPE", "connection", "show")
+    if list_r and list_r.returncode == 0:
+        for line in list_r.stdout.splitlines():
+            parts = line.split(":")
+            if len(parts) < 2: continue
+            profile_name, ctype = parts[0], parts[1]
+            if ctype != "802-11-wireless": continue
+            if _resolve_ssid_for_profile(profile_name) == target:
+                r2 = _nmcli("connection", "delete", profile_name, timeout=10)
+                if r2 and r2.returncode == 0:
+                    return jsonify({"ok": True})
+
+    err = (r.stderr if r else "not found") or "delete failed"
+    return jsonify({"ok": False, "error": err.strip()}), 400
 
 
 # ============================================================================

@@ -1,7 +1,9 @@
-# Gridfinity backend - allows the service user to run nmcli without password.
+# Gridfinity backend — allows the service user to run nmcli without a password.
 # %s is substituted with the actual service user at install time.
 #
-# nmcli itself is the security boundary - it can only manage NetworkManager,
-# not edit system files or escalate further.
+# nmcli itself is the security boundary here. It can only manage NetworkManager
+# (network connections, WiFi profiles). It cannot edit system files, run shell
+# commands, or escalate further. Granting blanket nmcli without password is the
+# standard pattern used by countless projects (rpi-network-manager, raspap, etc.)
 
 %s ALL=(ALL) NOPASSWD: /usr/bin/nmcli
