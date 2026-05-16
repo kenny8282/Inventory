@@ -8,6 +8,14 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Archivo:wght@500;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<!-- jsQR for camera-based QR scanning (Reprint Label feature). Try jsDelivr first
+     since it's frequently faster, fall back to cdnjs if blocked. -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script>
+  if (typeof jsQR === 'undefined') {
+    document.write('<' + 'script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"><' + '/script>');
+  }
+</script>
 <style>
   :root {
     --bg: #ece8de;
@@ -711,6 +719,120 @@
   }
 
   /* ============================================================================
+     SLICE 5 ADDITIONS — scan modal for Reprint Label
+     ============================================================================ */
+  .scan-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(22, 22, 22, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .scan-modal-inner {
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    width: 100%;
+    max-width: 440px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .scan-modal-header {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .scan-modal-header .title {
+    font-family: 'Archivo', sans-serif;
+    font-weight: 800;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .scan-modal .scan-close {
+    background: transparent;
+    color: var(--paper);
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0 6px;
+    line-height: 1;
+  }
+  .scan-modal .scan-close:hover { color: var(--accent); }
+  .scan-video-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: #000;
+    overflow: hidden;
+  }
+  .scan-video-wrap video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  /* Reticle to hint the user where to point the QR */
+  .scan-reticle {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60%;
+    aspect-ratio: 1 / 1;
+    border: 2px solid rgba(253, 252, 247, 0.85);
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.35);
+    pointer-events: none;
+  }
+  .scan-status {
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    text-align: center;
+    border-top: 1px solid var(--rule);
+  }
+  .scan-status.found {
+    color: #1a5d1a;
+    font-weight: 700;
+  }
+  .scan-status.error {
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .scan-actions {
+    padding: 10px 14px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    justify-content: center;
+  }
+  .scan-actions button {
+    padding: 8px 14px;
+    font-size: 11px;
+    font-family: 'Archivo', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  /* Brief highlight pulse for a row that the user just scanned (when row already
+     existed in this tab — we scroll it into view and pulse it). */
+  @keyframes row-pulse {
+    0%   { background: rgba(200, 52, 26, 0.30); }
+    100% { background: transparent; }
+  }
+  table.items tbody tr.row-just-scanned {
+    animation: row-pulse 1.6s ease-out;
+  }
+
+  /* ============================================================================
      SLICE 2 ADDITIONS — tabs, bottom nav, sticky print, mobile tuning
      ============================================================================ */
 
@@ -1030,6 +1152,7 @@
           <div class="toolbar">
             <button data-table="maker" class="add-row-btn">+ Add Row</button>
             <button data-table="maker" class="add-blank-rows-btn secondary">+ 5 Rows</button>
+            <button data-table="maker" class="reprint-btn secondary">⌖ Reprint Label</button>
             <button data-table="maker" class="dup-selected-btn secondary">Duplicate Selected</button>
             <button data-table="maker" class="del-selected-btn secondary warn">Delete Selected</button>
             <div class="spacer"></div>
@@ -1128,6 +1251,7 @@
           <div class="toolbar">
             <button data-table="printer" class="add-row-btn">+ Add Row</button>
             <button data-table="printer" class="add-blank-rows-btn secondary">+ 5 Rows</button>
+            <button data-table="printer" class="reprint-btn secondary">⌖ Reprint Label</button>
             <button data-table="printer" class="dup-selected-btn secondary">Duplicate Selected</button>
             <button data-table="printer" class="del-selected-btn secondary warn">Delete Selected</button>
             <div class="spacer"></div>
@@ -1301,6 +1425,46 @@
 
 <!-- Off-screen area for printing -->
 <div id="print-area"></div>
+
+<!-- ============================================================ -->
+<!-- SCAN MODAL — Reprint Label flow (Slice 5)                     -->
+<!-- ============================================================ -->
+<div id="scanModal" class="scan-modal" style="display:none;" role="dialog" aria-modal="true" aria-label="Scan label to reprint">
+  <div class="scan-modal-inner">
+    <div class="scan-modal-header">
+      <span class="title">SCAN LABEL TO REPRINT</span>
+      <button id="scanCancelBtn" class="scan-close" aria-label="Cancel">✕</button>
+    </div>
+    <div class="scan-video-wrap">
+      <video id="scanVideo" playsinline muted autoplay></video>
+      <canvas id="scanCanvas" style="display:none;"></canvas>
+      <div class="scan-reticle"></div>
+    </div>
+    <div class="scan-status" id="scanStatus">Point the camera at a QR code…</div>
+    <div class="scan-actions">
+      <button id="scanManualBtn" class="secondary">Type ID instead</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manual-ID fallback (when camera isn't available or user prefers typing) -->
+<div id="manualIdModal" class="scan-modal" style="display:none;" role="dialog" aria-modal="true" aria-label="Enter label ID">
+  <div class="scan-modal-inner">
+    <div class="scan-modal-header">
+      <span class="title">ENTER LABEL ID</span>
+      <button id="manualCancelBtn" class="scan-close" aria-label="Cancel">✕</button>
+    </div>
+    <div style="padding: 18px;">
+      <div class="field">
+        <label>5-character label ID (case-insensitive)</label>
+        <input type="text" id="manualIdInput" maxlength="5" placeholder="X7K2M" autocapitalize="characters" autocomplete="off" style="text-transform:uppercase;font-family:'JetBrains Mono';font-size:16px;letter-spacing:0.1em;" />
+      </div>
+      <div class="btn-row" style="margin-top: 12px;">
+        <button id="manualSubmitBtn" class="primary">Look up</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ============================================================ -->
 <!-- STICKY PRINT BAR — appears above bottom nav per active tab     -->
@@ -1678,7 +1842,15 @@ function persistTabPresets(tabName) {
 async function addRow(tabName, opts = {}) {
   const ts = getTabState(tabName);
   if (!ts) return;
-  const id = await issueId();
+  // Slice 5: reprint flow passes opts.preserveId — we reuse that ID instead of issuing
+  // a fresh one. Also tracked: opts.isReprint flag tells the print-success path to PUT
+  // updated text lines back to inventory.
+  const id = opts.preserveId ? opts.preserveId : await issueId();
+  if (opts.preserveId) {
+    // Make sure the ID is tracked as issued (it should be, but defensive)
+    state.used.add(id);
+    persistUsed();
+  }
   const w = opts.w != null ? opts.w : ts.formatW;
   const h = opts.h != null ? opts.h : ts.formatH;
   // Maker rows get stamped with the per-tab Label Format default color; printer rows ignore color.
@@ -1694,6 +1866,7 @@ async function addRow(tabName, opts = {}) {
     w, h,
     color,             // Slice 3: per-row color (Label Maker only)
     formatName: opts.formatName || 'custom',
+    isReprint: !!opts.isReprint,   // Slice 5: marks rows that came from QR scan
     selected: false,
     created: new Date().toISOString(),
   };
@@ -1708,6 +1881,7 @@ async function addRow(tabName, opts = {}) {
     const ta = document.querySelector(sel);
     if (ta) ta.focus();
   }, 0);
+  return row;
 }
 
 async function duplicateRow(tabName, uidStr) {
@@ -2600,6 +2774,256 @@ function renderRowToTapePng(row, tapeWidthMm = 12, maxPrintPx = null) {
 }
 
 /* ---- PER-ROW PRINT (tab-aware) ---- */
+/* ============================================================================
+   SLICE 5 — REPRINT LABEL flow
+   ============================================================================
+   Click "Reprint Label" → camera modal → scan QR → resolve to ID → either bring
+   existing row to top (if already in this tab) or add new row pre-filled from
+   inventory (or just the ID if not in inventory). On successful print of a
+   reprint row, PUT updated text lines to /api/items/<id> to refresh inventory.
+*/
+
+/* Extract the label ID from a scanned QR payload. Mirrors the inventory app's
+   normalizeQrPayload — handles all 4 payload modes the forge can produce:
+   - "X7K2M"           (id)
+   - "X7K2M|Capacitor" (combined)
+   - "{...json...}"    (json)
+   - "https://.../X7K2M" (url)
+*/
+function normalizeQrPayload(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  const s = raw.trim();
+  // JSON record (full)
+  if (s.startsWith('{')) {
+    try {
+      const j = JSON.parse(s);
+      if (j && typeof j.id === 'string' && j.id.length >= 3) return j.id.toUpperCase();
+    } catch (e) {}
+  }
+  // URL with ID as last path segment
+  if (s.startsWith('http://') || s.startsWith('https://')) {
+    try {
+      const u = new URL(s);
+      const last = u.pathname.split('/').filter(x => x).pop();
+      if (last && /^[A-Z0-9]{3,8}$/i.test(last)) return last.toUpperCase();
+    } catch (e) {}
+  }
+  // Combined "ID|name"
+  if (s.includes('|')) {
+    const left = s.split('|')[0].trim();
+    if (/^[A-Z0-9]{3,8}$/i.test(left)) return left.toUpperCase();
+  }
+  // Plain ID
+  if (/^[A-Z0-9]{3,8}$/i.test(s)) return s.toUpperCase();
+  return null;
+}
+
+/* Scan-modal state. Camera stream and scan loop are torn down on close. */
+const _scan = {
+  stream: null,
+  rafId: null,
+  active: false,
+  tabName: null,        // which tab requested the reprint
+};
+
+async function openReprintScan(tabName) {
+  _scan.tabName = tabName;
+  const modal = el('scanModal'); if (!modal) return;
+  const video = el('scanVideo');
+  const status = el('scanStatus');
+  status.className = 'scan-status';
+  status.textContent = 'Starting camera…';
+  modal.style.display = 'flex';
+
+  if (typeof jsQR === 'undefined') {
+    status.className = 'scan-status error';
+    status.textContent = 'QR library not loaded. Use "Type ID instead".';
+    return;
+  }
+
+  try {
+    _scan.stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' },
+      audio: false,
+    });
+    video.srcObject = _scan.stream;
+    await video.play();
+    status.textContent = 'Point the camera at a QR code…';
+    _scan.active = true;
+    scanLoop();
+  } catch (e) {
+    status.className = 'scan-status error';
+    status.textContent = 'Camera blocked or unavailable. Use "Type ID instead".';
+    console.warn('camera error:', e);
+  }
+}
+
+function closeReprintScan() {
+  _scan.active = false;
+  if (_scan.rafId) { cancelAnimationFrame(_scan.rafId); _scan.rafId = null; }
+  if (_scan.stream) {
+    _scan.stream.getTracks().forEach(t => { try { t.stop(); } catch (e) {} });
+    _scan.stream = null;
+  }
+  const video = el('scanVideo');
+  if (video) { try { video.pause(); video.srcObject = null; } catch (e) {} }
+  const modal = el('scanModal'); if (modal) modal.style.display = 'none';
+}
+
+/* Run jsQR against the current video frame. Down-sample for speed. */
+function scanLoop() {
+  if (!_scan.active) return;
+  const video = el('scanVideo');
+  const canvas = el('scanCanvas');
+  if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) {
+    _scan.rafId = requestAnimationFrame(scanLoop);
+    return;
+  }
+  // Downsample to ~360px max dimension for jsQR speed
+  const maxDim = 360;
+  const ratio = Math.min(1, maxDim / Math.max(video.videoWidth, video.videoHeight));
+  canvas.width = Math.round(video.videoWidth * ratio);
+  canvas.height = Math.round(video.videoHeight * ratio);
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  try {
+    const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: 'dontInvert' });
+    if (code && code.data) {
+      const id = normalizeQrPayload(code.data);
+      if (id) {
+        _scan.active = false;
+        const status = el('scanStatus');
+        status.className = 'scan-status found';
+        status.textContent = `Scanned: ${id}`;
+        // Small delay so the user sees the confirmation
+        setTimeout(() => { handleScannedId(_scan.tabName, id); closeReprintScan(); }, 300);
+        return;
+      }
+    }
+  } catch (e) { console.warn('jsQR error:', e); }
+  _scan.rafId = requestAnimationFrame(scanLoop);
+}
+
+/* Manual ID fallback. */
+function openManualIdModal(tabName) {
+  _scan.tabName = tabName;
+  const m = el('manualIdModal'); if (!m) return;
+  const inp = el('manualIdInput'); if (inp) { inp.value = ''; setTimeout(() => inp.focus(), 50); }
+  m.style.display = 'flex';
+}
+function closeManualIdModal() {
+  const m = el('manualIdModal'); if (m) m.style.display = 'none';
+}
+function submitManualId() {
+  const inp = el('manualIdInput'); if (!inp) return;
+  const id = (inp.value || '').trim().toUpperCase();
+  if (!/^[A-Z0-9]{3,8}$/.test(id)) {
+    alert('Enter a valid label ID (3–8 letters/digits).');
+    inp.focus();
+    return;
+  }
+  const tab = _scan.tabName;
+  closeManualIdModal();
+  handleScannedId(tab, id);
+}
+
+/* Once we have an ID (from camera or manual), decide what to do with it. */
+async function handleScannedId(tabName, id) {
+  const ts = getTabState(tabName); if (!ts) return;
+
+  // Case 1: this ID is already a row in this tab → bring it to top, pulse it.
+  const existingIdx = ts.rows.findIndex(r => r.id === id);
+  if (existingIdx >= 0) {
+    const existing = ts.rows[existingIdx];
+    ts.rows.splice(existingIdx, 1);
+    ts.rows.unshift(existing);
+    await persistTabRows(tabName);
+    renderTab(tabName);
+    alert(`${id} is already in this tab — moved to the top for editing.`);
+    // Apply pulse animation after re-render
+    setTimeout(() => {
+      const tr = document.querySelector(`#${tabName}Body tr[data-uid="${existing.uid}"]`);
+      if (tr) {
+        tr.classList.add('row-just-scanned');
+        tr.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        setTimeout(() => tr.classList.remove('row-just-scanned'), 1800);
+      }
+    }, 0);
+    return;
+  }
+
+  // Case 2: fetch existing inventory record for this ID.
+  let record = null;
+  try {
+    const r = await fetch('/api/items/' + encodeURIComponent(id), { cache: 'no-store' });
+    if (r.ok) record = await r.json();
+  } catch (e) { console.warn('inventory fetch failed:', e); }
+
+  // record may be the full registry entry OR the backend's wrapped {ok, record} shape
+  // OR the value field directly. Be liberal in what we accept.
+  let lines = [], w_mm = null, h_mm = null;
+  if (record) {
+    const rec = record.record || record;
+    if (rec) {
+      if (Array.isArray(rec.lines)) lines = rec.lines;
+      if (typeof rec.w_mm === 'number') w_mm = rec.w_mm;
+      if (typeof rec.h_mm === 'number') h_mm = rec.h_mm;
+    }
+  }
+  // Also check our own local registry (fallback if backend didn't have it)
+  if (lines.length === 0 && state.registry[id]) {
+    const local = state.registry[id];
+    if (Array.isArray(local.lines)) lines = local.lines;
+    if (typeof local.w_mm === 'number' && w_mm === null) w_mm = local.w_mm;
+    if (typeof local.h_mm === 'number' && h_mm === null) h_mm = local.h_mm;
+  }
+
+  // Pre-fill the new row from whatever data we found
+  await addRow(tabName, {
+    preserveId: id,
+    isReprint: true,
+    line1: lines[0] || '',
+    line2: lines[1] || '',
+    line3: lines[2] || '',
+    qr: true,
+    copies: 1,
+    w: w_mm,         // null falls back to format default in addRow
+    h: h_mm,
+    formatName: 'custom',
+  });
+
+  // Apply pulse to the newly-added row (it's at index 0)
+  setTimeout(() => {
+    const tr = document.querySelector(`#${tabName}Body tr:first-child`);
+    if (tr) {
+      tr.classList.add('row-just-scanned');
+      setTimeout(() => tr.classList.remove('row-just-scanned'), 1800);
+    }
+  }, 50);
+}
+
+/* After a row marked isReprint is successfully printed, push its updated text lines
+   to /api/items/<id>. Backend merges, leaving location/quantity/etc untouched. */
+async function pushReprintToInventory(row) {
+  if (!row || !row.id) return;
+  const payload = {
+    lines: [row.line1, row.line2, row.line3].filter(s => s && s.trim()),
+    w_mm: row.w,
+    h_mm: row.h,
+    format_name: row.formatName || 'custom',
+  };
+  try {
+    const r = await fetch('/api/items/' + encodeURIComponent(row.id), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) console.warn('inventory PUT failed for', row.id, r.status);
+  } catch (e) { console.warn('inventory PUT error for', row.id, e); }
+}
+
+
 async function printSingleRow(tabName, uidStr) {
   const ts = getTabState(tabName); if (!ts) return;
   const row = ts.rows.find(r => r.uid === uidStr); if (!row) return;
@@ -2651,7 +3075,11 @@ async function printRowToTape(row, btnEl) {
     });
     const result = await resp.json();
     if (!result.ok) alert(`Print failed:\n${result.error || 'unknown'}\n\n${JSON.stringify(result.detail || result.results || {}, null, 2)}`);
-    else if (btnEl) { btnEl.textContent = '✓'; setTimeout(() => { btnEl.textContent = original; btnEl.disabled = false; }, 1500); }
+    else {
+      // Slice 5: if this was a reprint row, push updated text lines back to inventory.
+      if (row.isReprint) { pushReprintToInventory(row); row.isReprint = false; persistTabRows('maker'); }
+      if (btnEl) { btnEl.textContent = '✓'; setTimeout(() => { btnEl.textContent = original; btnEl.disabled = false; }, 1500); }
+    }
   } catch (e) { alert('Network error: ' + e.message); }
   finally { if (btnEl && btnEl.textContent === '⌛') { btnEl.textContent = original; btnEl.disabled = false; } }
 }
@@ -2723,7 +3151,20 @@ async function printBatchToTape() {
     });
     const result = await resp.json();
     if (!result.ok) alert(`Batch print failed:\n${result.error || 'unknown'}\n\n${JSON.stringify(result.detail || result.results || {}, null, 2)}`);
-    else if (btn) { btn.textContent = '✓ Printed'; setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2000); }
+    else {
+      // Slice 5: push every reprint row to inventory (unique by ID, since `printable`
+      // may contain copies of the same row).
+      const reprintIds = new Set();
+      for (const r of printable) {
+        if (r.isReprint && !reprintIds.has(r.id)) {
+          reprintIds.add(r.id);
+          pushReprintToInventory(r);
+          r.isReprint = false;
+        }
+      }
+      if (reprintIds.size > 0) persistTabRows('maker');
+      if (btn) { btn.textContent = '✓ Printed'; setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2000); }
+    }
   } catch (e) { alert('Network error: ' + e.message); }
   if (btn && btn.textContent.indexOf('⌛') === 0) { btn.textContent = orig; btn.disabled = false; }
 }
@@ -2790,6 +3231,20 @@ function doPrintSheet(items) {
 
   requestAnimationFrame(() => {
     cards.forEach(c => c._fit && c._fit());
+    // Slice 5: push reprint rows back to inventory before opening the print dialog.
+    // (We can't distinguish "actually printed" from "cancelled" reliably from JS,
+    // so we update on dialog-open. Inventory is forgiving — re-editing and re-printing
+    // will just update again.)
+    const seen = new Set();
+    items.forEach(it => {
+      const r = it.row;
+      if (r && r.isReprint && !seen.has(r.id)) {
+        seen.add(r.id);
+        pushReprintToInventory(r);
+        r.isReprint = false;
+      }
+    });
+    if (seen.size > 0) persistTabRows('printer');
     setTimeout(() => { window.print(); }, 80);
   });
 }
@@ -2930,6 +3385,10 @@ function setupListeners() {
   document.querySelectorAll('.add-blank-rows-btn').forEach(b => b.addEventListener('click', async () => {
     for (let i = 0; i < 5; i++) await addRow(b.dataset.table);
   }));
+  // Slice 5: Reprint Label opens the camera scan modal
+  document.querySelectorAll('.reprint-btn').forEach(b => b.addEventListener('click', () => {
+    openReprintScan(b.dataset.table);
+  }));
   document.querySelectorAll('.dup-selected-btn').forEach(b => b.addEventListener('click', async () => {
     const ts = getTabState(b.dataset.table); if (!ts) return;
     const sel = ts.rows.filter(r => r.selected).map(r => r.uid);
@@ -2983,6 +3442,26 @@ function setupListeners() {
     await persistMakerRows(); await persistPrinterRows();
     await persistTapePresets(); await persistSheetPresets();
     renderAll();
+  });
+
+  // Slice 5: scan modal close + manual-ID fallback
+  if (el('scanCancelBtn')) el('scanCancelBtn').addEventListener('click', closeReprintScan);
+  if (el('scanManualBtn')) el('scanManualBtn').addEventListener('click', () => {
+    const tab = _scan.tabName;
+    closeReprintScan();
+    openManualIdModal(tab);
+  });
+  if (el('manualCancelBtn')) el('manualCancelBtn').addEventListener('click', closeManualIdModal);
+  if (el('manualSubmitBtn')) el('manualSubmitBtn').addEventListener('click', submitManualId);
+  if (el('manualIdInput')) el('manualIdInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitManualId();
+  });
+  // Click outside the modal-inner closes the modal
+  if (el('scanModal')) el('scanModal').addEventListener('click', e => {
+    if (e.target === el('scanModal')) closeReprintScan();
+  });
+  if (el('manualIdModal')) el('manualIdModal').addEventListener('click', e => {
+    if (e.target === el('manualIdModal')) closeManualIdModal();
   });
 }
 
