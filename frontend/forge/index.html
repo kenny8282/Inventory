@@ -560,6 +560,44 @@
   }
 
   /* ============================================================================
+     SLICE 3 ADDITIONS — row printability, per-row color cell
+     ============================================================================ */
+  /* Subtle background on rows whose h doesn't match the loaded cartridge */
+  table.items tbody tr.row-unprintable {
+    background: rgba(200, 52, 26, 0.04);
+  }
+  table.items tbody tr.row-unprintable:nth-child(even) {
+    background: rgba(200, 52, 26, 0.06);
+  }
+  /* The disabled checkbox + Print button get a clear non-interactive look */
+  table.items tbody tr.row-unprintable .row-sel,
+  table.items tbody tr.row-unprintable .print-row-btn {
+    cursor: not-allowed;
+    opacity: 0.35;
+  }
+  /* A little corner indicator on the ID cell for unprintable rows */
+  table.items tbody tr.row-unprintable td.id-cell {
+    color: var(--accent);
+    position: relative;
+  }
+  table.items tbody tr.row-unprintable td.id-cell::before {
+    content: '✕';
+    color: var(--accent);
+    font-weight: 900;
+    margin-right: 4px;
+    font-size: 10px;
+  }
+
+  /* Color picker cell in Label Maker table */
+  table.items td.color-cell {
+    width: 110px;
+    white-space: nowrap;
+  }
+  table.items td.color-cell select {
+    font-size: 10.5px;
+  }
+
+  /* ============================================================================
      SLICE 2 ADDITIONS — tabs, bottom nav, sticky print, mobile tuning
      ============================================================================ */
 
@@ -855,7 +893,7 @@
         <div class="panel">
           <h2><span>Label Format</span><span class="num">NEW</span></h2>
           <div class="hint" style="margin-top:0;margin-bottom:8px;">
-            New labels use this length. Label height = tape width (set above). Per-row override available in the table.
+            Sets the size of <b>new</b> labels you add below. Height matches the current tape width. Existing rows keep their dimensions and color (immutable after creation).
           </div>
           <div class="row">
             <div class="field" style="margin-bottom: 0;">
@@ -874,27 +912,6 @@
           <input type="text" id="makerPresetDesc" placeholder="Description (optional)" style="margin-top:6px;" />
           <div class="preset-list" id="makerPresetList">
             <!-- populated dynamically -->
-          </div>
-        </div>
-
-        <!-- QR DEFAULTS (shared) -->
-        <div class="panel">
-          <h2><span>QR Defaults</span><span class="num">QR</span></h2>
-          <div class="field">
-            <label>QR payload format</label>
-            <select id="qrMode">
-              <option value="id">ID only (X7K2M)</option>
-              <option value="combined" selected>ID + primary text</option>
-              <option value="json">JSON record (full)</option>
-              <option value="url">URL prefix + ID</option>
-            </select>
-          </div>
-          <div class="field" id="urlPrefixField" style="display:none;">
-            <label>URL prefix</label>
-            <input type="text" id="urlPrefix" placeholder="https://inv.local/" />
-          </div>
-          <div class="alert">
-            <b>NOTE:</b> Whatever payload you choose, the full record (id, lines, format) is logged to the registry. The QR only needs the ID for lookups — extra fields are convenience.
           </div>
         </div>
 
@@ -927,6 +944,7 @@
                   <th style="width: 50px;">QR</th>
                   <th style="width: 60px;">Copies</th>
                   <th class="size-cell">W × H (mm)</th>
+                  <th style="width: 110px;">Tape Color</th>
                   <th style="width: 80px;">Format</th>
                   <th style="width: 90px;"></th>
                 </tr>
@@ -969,47 +987,11 @@
       <!-- LEFT: config for sheet -->
       <div>
 
-        <!-- PAGE -->
-        <div class="panel">
-          <h2><span>Page</span><span class="num">8.5×11</span></h2>
-          <div class="field">
-            <label>Orientation</label>
-            <select id="sheetOrientation">
-              <option value="portrait" selected>Portrait (8.5 × 11)</option>
-              <option value="landscape">Landscape (11 × 8.5) — for longer labels</option>
-            </select>
-          </div>
-          <div class="row">
-            <div class="field" style="margin-bottom: 0;">
-              <label>Page margin (mm)</label>
-              <input type="number" id="pageMargin" value="3" step="0.5" min="0" />
-            </div>
-            <div class="field" style="margin-bottom: 0;">
-              <label>Gap H (mm)</label>
-              <input type="number" id="gapH" value="1" step="0.5" min="0" />
-            </div>
-          </div>
-          <div class="row" style="margin-top: 8px;">
-            <div class="field" style="margin-bottom: 0;">
-              <label>Gap V (mm)</label>
-              <input type="number" id="gapV" value="1" step="0.5" min="0" />
-            </div>
-            <div class="field" style="margin-bottom: 0;">
-              <label>&nbsp;</label>
-              <div class="checkbox-row" style="padding: 8px 0;">
-                <input type="checkbox" id="cutMarks" checked />
-                <label for="cutMarks">Cut guides</label>
-              </div>
-            </div>
-          </div>
-          <div class="hint" id="capacityHint" style="margin-top: 8px;"></div>
-        </div>
-
         <!-- LABEL FORMAT (Printer) -->
         <div class="panel">
           <h2><span>Label Format</span><span class="num">NEW</span></h2>
           <div class="hint" style="margin-top:0;margin-bottom:8px;">
-            New labels you add will use these dimensions. You can change any row's size in the table.
+            Sets the size of <b>new</b> labels you add below. Existing rows keep their dimensions until you edit them directly in the table. Page setup, margins, and gaps live in the <b>Options</b> tab.
           </div>
           <div class="row">
             <div class="field" style="margin-bottom: 0;">
@@ -1028,27 +1010,6 @@
           <input type="text" id="printerPresetDesc" placeholder="Description (optional)" style="margin-top:6px;" />
           <div class="preset-list" id="printerPresetList">
             <!-- populated dynamically -->
-          </div>
-        </div>
-
-        <!-- QR DEFAULTS (shared instance reference — same values used in both tabs) -->
-        <div class="panel">
-          <h2><span>QR Defaults</span><span class="num">QR</span></h2>
-          <div class="hint" style="margin-top:0;margin-bottom:8px;">
-            QR settings are shared with the Label Maker tab — change here or there.
-          </div>
-          <div class="field">
-            <label>QR payload format</label>
-            <select id="qrMode2">
-              <option value="id">ID only (X7K2M)</option>
-              <option value="combined" selected>ID + primary text</option>
-              <option value="json">JSON record (full)</option>
-              <option value="url">URL prefix + ID</option>
-            </select>
-          </div>
-          <div class="field" id="urlPrefixField2" style="display:none;">
-            <label>URL prefix</label>
-            <input type="text" id="urlPrefix2" placeholder="https://inv.local/" />
           </div>
         </div>
 
@@ -1113,10 +1074,74 @@
   </div>
 
   <!-- ============================================================ -->
-  <!-- TAB: REGISTRY & DATA                                          -->
+  <!-- TAB: OPTIONS (formerly Registry — settings + data)            -->
   <!-- ============================================================ -->
   <div id="tab-registry" class="tab-view">
 
+    <!-- QR DEFAULTS (single source of truth — used by both Label Maker and Printer) -->
+    <div class="panel">
+      <h2><span>QR Defaults</span><span class="num">QR</span></h2>
+      <div class="hint" style="margin-top:0;margin-bottom:8px;">
+        These settings apply to every label, regardless of which tab it was created in.
+      </div>
+      <div class="field">
+        <label>QR payload format</label>
+        <select id="qrMode">
+          <option value="id">ID only (X7K2M)</option>
+          <option value="combined" selected>ID + primary text</option>
+          <option value="json">JSON record (full)</option>
+          <option value="url">URL prefix + ID</option>
+        </select>
+      </div>
+      <div class="field" id="urlPrefixField" style="display:none;">
+        <label>URL prefix</label>
+        <input type="text" id="urlPrefix" placeholder="https://inv.local/" />
+      </div>
+      <div class="alert">
+        <b>NOTE:</b> Whatever payload you choose, the full record (id, lines, format) is logged to the registry. The QR only needs the ID for lookups — extra fields are convenience.
+      </div>
+    </div>
+
+    <!-- PAGE OPTIONS (Printer tab) — moved here from Slice 2 -->
+    <div class="panel">
+      <h2><span>Page Options (Printer)</span><span class="num">8.5×11</span></h2>
+      <div class="hint" style="margin-top:0;margin-bottom:8px;">
+        Settings for the 8.5×11 paper output on the Printer tab.
+      </div>
+      <div class="field">
+        <label>Orientation</label>
+        <select id="sheetOrientation">
+          <option value="portrait" selected>Portrait (8.5 × 11)</option>
+          <option value="landscape">Landscape (11 × 8.5) — for longer labels</option>
+        </select>
+      </div>
+      <div class="row">
+        <div class="field" style="margin-bottom: 0;">
+          <label>Page margin (mm)</label>
+          <input type="number" id="pageMargin" value="3" step="0.5" min="0" />
+        </div>
+        <div class="field" style="margin-bottom: 0;">
+          <label>Gap H (mm)</label>
+          <input type="number" id="gapH" value="1" step="0.5" min="0" />
+        </div>
+      </div>
+      <div class="row" style="margin-top: 8px;">
+        <div class="field" style="margin-bottom: 0;">
+          <label>Gap V (mm)</label>
+          <input type="number" id="gapV" value="1" step="0.5" min="0" />
+        </div>
+        <div class="field" style="margin-bottom: 0;">
+          <label>&nbsp;</label>
+          <div class="checkbox-row" style="padding: 8px 0;">
+            <input type="checkbox" id="cutMarks" checked />
+            <label for="cutMarks">Cut guides</label>
+          </div>
+        </div>
+      </div>
+      <div class="hint" id="capacityHint" style="margin-top: 8px;"></div>
+    </div>
+
+    <!-- STATISTICS -->
     <div class="panel">
       <h2><span>Statistics</span><span class="num">↗</span></h2>
       <div class="row-3">
@@ -1135,6 +1160,7 @@
       </div>
     </div>
 
+    <!-- REGISTRY & DATA -->
     <div class="panel">
       <h2><span>Registry &amp; Data</span><span class="num">↓↑</span></h2>
       <div class="hint" style="margin-bottom: 10px;">
@@ -1153,6 +1179,7 @@
       </div>
     </div>
 
+    <!-- STORAGE BACKEND -->
     <div class="panel">
       <h2><span>Storage Backend</span><span class="num">⛁</span></h2>
       <div class="hint">
@@ -1188,7 +1215,7 @@
     <span class="nav-icon">📄</span><span>Printer</span>
   </button>
   <button class="nav-btn" data-tab="registry">
-    <span class="nav-icon">⛁</span><span>Registry</span>
+    <span class="nav-icon">⚙</span><span>Options</span>
   </button>
 </nav>
 
@@ -1234,7 +1261,7 @@ const state = {
   registry: {},
   activeTab: 'maker',   // 'maker' | 'printer' | 'registry'
 
-  // Shared QR settings (mirrored to both qrMode/qrMode2 inputs)
+  // QR settings — single instance now lives in the Options tab
   qrMode: 'combined',
   urlPrefix: '',
 
@@ -1492,9 +1519,9 @@ function applyConfigToInputs() {
   if (el('gapH')) el('gapH').value = state.printer.gapH;
   if (el('gapV')) el('gapV').value = state.printer.gapV;
   if (el('cutMarks')) el('cutMarks').checked = !!state.printer.cutMarks;
-  // QR (mirrored)
-  ['qrMode','qrMode2'].forEach(id => { const e = el(id); if (e) e.value = state.qrMode; });
-  ['urlPrefix','urlPrefix2'].forEach(id => { const e = el(id); if (e) e.value = state.urlPrefix; });
+  // QR (single instance lives in Options tab)
+  if (el('qrMode')) el('qrMode').value = state.qrMode;
+  if (el('urlPrefix')) el('urlPrefix').value = state.urlPrefix;
   toggleUrlField();
 }
 
@@ -1545,6 +1572,8 @@ async function addRow(tabName, opts = {}) {
   const id = await issueId();
   const w = opts.w != null ? opts.w : ts.formatW;
   const h = opts.h != null ? opts.h : ts.formatH;
+  // Maker rows get stamped with the current global tape color default; printer rows ignore color.
+  const color = (tabName === 'maker') ? (opts.color || state.tapeColor || 'white-black') : null;
   const row = {
     uid: uid(),
     id,
@@ -1554,11 +1583,13 @@ async function addRow(tabName, opts = {}) {
     qr: opts.qr !== undefined ? opts.qr : true,
     copies: opts.copies || 1,
     w, h,
+    color,             // Slice 3: per-row color (Label Maker only)
     formatName: opts.formatName || 'custom',
     selected: false,
     created: new Date().toISOString(),
   };
-  ts.rows.push(row);
+  // Slice 3: new rows go at the TOP of the table (so on mobile users don't scroll)
+  ts.rows.unshift(row);
   logRow(row);
   await persistTabRows(tabName);
   renderTab(tabName);
@@ -1576,7 +1607,7 @@ async function duplicateRow(tabName, uidStr) {
   await addRow(tabName, {
     line1: row.line1, line2: row.line2, line3: row.line3,
     qr: row.qr, copies: row.copies,
-    w: row.w, h: row.h, formatName: row.formatName,
+    w: row.w, h: row.h, color: row.color, formatName: row.formatName,
   });
 }
 
@@ -1806,25 +1837,37 @@ function renderTable(tabName) {
   const ts = getTabState(tabName); if (!ts) return;
   const tb = el(tabName + 'Body'); if (!tb) return;
   tb.innerHTML = '';
+  // Number of columns varies: Label Maker has a Tape Color column (11), Printer doesn't (10)
+  const colCount = (tabName === 'maker') ? 11 : 10;
   if (ts.rows.length === 0) {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td colspan="10"><div class="table-empty">No rows. Click <b>+ Add Row</b> to begin.</div></td>`;
+    tr.innerHTML = `<td colspan="${colCount}"><div class="table-empty">No rows. Click <b>+ Add Row</b> to begin.</div></td>`;
     tb.appendChild(tr);
     return;
   }
-  // Build the per-row format select options: "Custom" + this tab's presets
-  const presetOpts = ts.presets.map(p =>
-    `<option value="preset:${p.id}">${escapeHtml(p.name)} (${p.w}×${p.h})</option>`
-  ).join('');
+
+  // Printability check for Label Maker: a row is printable only if its h matches the
+  // currently-loaded cartridge (when one is connected). If no printer is connected,
+  // we can't compare — all rows are treated as "printable" but the print path will
+  // surface its own error.
+  const loadedCartridgeMm =
+    (tabName === 'maker' && _lastPrinterStatus && _lastPrinterStatus.connected)
+      ? (_lastPrinterStatus.tape_width_mm || null)
+      : null;
 
   ts.rows.forEach(row => {
     const tr = document.createElement('tr');
     tr.dataset.uid = row.uid;
 
+    // Compute printability for this row (Label Maker only)
+    const printable = (tabName !== 'maker') ? true :
+                      (loadedCartridgeMm === null ? true :
+                       Math.abs((row.h || 0) - loadedCartridgeMm) < 0.01);
+    if (!printable) tr.classList.add('row-unprintable');
+
     // Determine which option is "selected" in the Format dropdown
     let fmtSelected = 'custom';
     if (row.formatName && row.formatName !== 'custom') {
-      // Find the matching preset by name AND dimensions (presets may have been deleted)
       const match = ts.presets.find(p => p.name === row.formatName && p.w === row.w && p.h === row.h);
       if (match) fmtSelected = 'preset:' + match.id;
     }
@@ -1834,8 +1877,23 @@ function renderTable(tabName) {
         `<option value="preset:${p.id}" ${fmtSelected==='preset:'+p.id?'selected':''}>${escapeHtml(p.name)} (${p.w}×${p.h})</option>`
       ).join('');
 
+    // Color cell (Label Maker only) — render dropdown of TAPE_COLORS
+    let colorCellHtml = '';
+    if (tabName === 'maker') {
+      const colorOptions = Object.entries(TAPE_COLORS).map(([key, c]) =>
+        `<option value="${key}" ${row.color === key ? 'selected' : ''}>${escapeHtml(c.name)}</option>`
+      ).join('');
+      colorCellHtml = `<td class="color-cell"><select class="color-sel">${colorOptions}</select></td>`;
+    }
+
+    // Build the row HTML — note that selection checkbox + per-row Print are
+    // disabled when the row isn't printable on the loaded cartridge.
+    const selDisabled = !printable ? 'disabled' : '';
+    const selTitle = !printable
+      ? `title="Loaded tape is ${loadedCartridgeMm}mm but this label needs ${row.h}mm — load matching tape to print"`
+      : '';
     tr.innerHTML = `
-      <td><input type="checkbox" class="row-sel" ${row.selected ? 'checked' : ''} /></td>
+      <td><input type="checkbox" class="row-sel" ${row.selected && printable ? 'checked' : ''} ${selDisabled} ${selTitle} /></td>
       <td class="id-cell">${row.id || '...'}</td>
       <td><textarea class="line1" rows="1" placeholder="Primary">${escapeHtml(row.line1 || '')}</textarea></td>
       <td><textarea class="line2" rows="1" placeholder="Secondary">${escapeHtml(row.line2 || '')}</textarea></td>
@@ -1845,21 +1903,27 @@ function renderTable(tabName) {
       <td class="size-cell">
         <input type="number" class="w-in" min="4" step="0.1" value="${row.w}" /><span class="x">×</span><input type="number" class="h-in" min="4" step="0.1" value="${row.h}" />
       </td>
+      ${colorCellHtml}
       <td class="fmt-cell"><select class="fmt-sel">${fmtOptions}</select></td>
       <td class="actions">
-        <button class="print-row-btn" title="Print this row">⎙</button>
+        <button class="print-row-btn" title="Print this row" ${!printable ? 'disabled' : ''}>⎙</button>
         <button class="dup-btn" title="Duplicate">⎘</button>
         <button class="del-btn" title="Delete">✕</button>
       </td>
     `;
+    // If row was selected but is no longer printable, clear its selected state in data
+    if (!printable && row.selected) row.selected = false;
     tb.appendChild(tr);
 
-    // Wire row events
+    // ---- Wire events ----
     const onText = (field) => (e) => { row[field] = e.target.value; persistTabRows(tabName); schedulePreview(); };
     tr.querySelector('.line1').addEventListener('input', onText('line1'));
     tr.querySelector('.line2').addEventListener('input', onText('line2'));
     tr.querySelector('.line3').addEventListener('input', onText('line3'));
-    tr.querySelector('.row-sel').addEventListener('change', e => { row.selected = e.target.checked; updateStickyPrint(); });
+    tr.querySelector('.row-sel').addEventListener('change', e => {
+      if (e.target.disabled) { e.target.checked = false; return; }
+      row.selected = e.target.checked; updateStickyPrint(); schedulePreview();
+    });
     tr.querySelector('.qr-chk').addEventListener('change', e => { row.qr = e.target.checked; persistTabRows(tabName); logRow(row); schedulePreview(); });
     tr.querySelector('.copies-in').addEventListener('input', e => { row.copies = Math.max(1, parseInt(e.target.value) || 1); persistTabRows(tabName); updateMeta(); schedulePreview(); updateStickyPrint(); });
     tr.querySelector('.w-in').addEventListener('input', e => {
@@ -1871,6 +1935,8 @@ function renderTable(tabName) {
       const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) row.h = v;
       row.formatName = 'custom';
       persistTabRows(tabName); logRow(row); schedulePreview(); renderRowFormatCell(tr, row, ts);
+      // Height change may change printability — re-render the row
+      renderTable(tabName);
     });
     tr.querySelector('.fmt-sel').addEventListener('change', e => {
       const v = e.target.value;
@@ -1881,16 +1947,23 @@ function renderTable(tabName) {
         const p = ts.presets.find(pp => pp.id === pid);
         if (p) {
           row.w = p.w; row.h = p.h; row.formatName = p.name;
-          // Update the inline W/H inputs visually
           tr.querySelector('.w-in').value = p.w;
           tr.querySelector('.h-in').value = p.h;
         }
       }
       persistTabRows(tabName); logRow(row); schedulePreview();
+      // Preset apply may change h → re-evaluate printability
+      if (tabName === 'maker') renderTable(tabName);
+    });
+    const colorSel = tr.querySelector('.color-sel');
+    if (colorSel) colorSel.addEventListener('change', e => {
+      row.color = e.target.value;
+      persistTabRows(tabName); schedulePreview();
     });
     tr.querySelector('.dup-btn').addEventListener('click', () => duplicateRow(tabName, row.uid));
     tr.querySelector('.del-btn').addEventListener('click', () => deleteRow(tabName, row.uid));
-    tr.querySelector('.print-row-btn').addEventListener('click', () => printSingleRow(tabName, row.uid));
+    const printRowBtn = tr.querySelector('.print-row-btn');
+    if (printRowBtn) printRowBtn.addEventListener('click', () => printSingleRow(tabName, row.uid));
 
     // Auto-grow textareas
     tr.querySelectorAll('textarea').forEach(ta => {
@@ -1996,43 +2069,49 @@ function renderPreview() {
 function renderMakerPreview() {
   const body = el('makerPreviewBody'); if (!body) return;
   body.innerHTML = '';
-  const rows = state.maker.rows;
-  if (rows.length === 0) {
-    body.innerHTML = `<div class="single-stage" style="color: var(--muted); font-size: 12px; text-align: center; padding: 40px;">Add a row to see a preview.</div>`;
+  // Slice 3: preview only shows SELECTED rows. Empty preview when nothing is selected.
+  const selected = state.maker.rows.filter(r => r.selected);
+  if (selected.length === 0) {
+    body.innerHTML = `<div class="single-stage" style="color: var(--muted); font-size: 12px; text-align: center; padding: 40px;">Select rows in the table to preview them here.</div>`;
+    el('makerPreviewInfo').textContent = '— mm × — mm';
     return;
   }
   const stage = document.createElement('div');
   stage.className = 'single-stage';
   body.appendChild(stage);
-  rows.slice(0, 8).forEach(row => {
+  // Each selected row renders with its OWN stored color (not the global tapeColor)
+  selected.slice(0, 12).forEach(row => {
     const frame = document.createElement('div');
     frame.className = 'single-frame';
-    const card = buildLabelCard(row, { withShadow: true, tapeColor: state.tapeColor });
+    const card = buildLabelCard(row, { withShadow: true, tapeColor: row.color || 'white-black' });
     frame.appendChild(card);
     const dims = effectiveDimsForRow(row);
+    const colorName = (TAPE_COLORS[row.color || ''] || {}).name || '';
     const cap = document.createElement('div');
     cap.className = 'caption';
-    cap.textContent = `${row.id} · ${dims.w}×${dims.h}mm · ×${row.copies}${dims.qrOnly ? ' · QR-only' : ''}`;
+    cap.textContent = `${row.id} · ${dims.w}×${dims.h}mm · ×${row.copies}${dims.qrOnly ? ' · QR-only' : ''}${colorName ? ' · ' + colorName : ''}`;
     frame.appendChild(cap);
     stage.appendChild(frame);
     requestAnimationFrame(() => card._fit && card._fit());
   });
-  if (rows.length > 8) {
+  if (selected.length > 12) {
     const more = document.createElement('div');
     more.style.cssText = 'width:100%;text-align:center;color:var(--muted);font-size:11px;font-family:Archivo;text-transform:uppercase;letter-spacing:0.1em;margin-top:8px;';
-    more.textContent = `+ ${rows.length - 8} more rows`;
+    more.textContent = `+ ${selected.length - 12} more selected rows`;
     body.appendChild(more);
   }
-  const totalLabels = rows.reduce((s, r) => s + Math.max(1, r.copies || 1), 0);
-  el('makerPreviewInfo').textContent = `${rows.length} rows · ${totalLabels} labels`;
+  const totalLabels = selected.reduce((s, r) => s + Math.max(1, r.copies || 1), 0);
+  el('makerPreviewInfo').textContent = `${selected.length} selected · ${totalLabels} labels`;
 }
 
 function renderPrinterPreview() {
   const body = el('printerPreviewBody'); if (!body) return;
   body.innerHTML = '';
-  const rows = state.printer.rows;
-  if (rows.length === 0) {
-    body.innerHTML = `<div style="color: var(--muted); font-size: 12px; text-align: center; padding: 40px;">Add a row to see the sheet layout.</div>`;
+  // Slice 3: preview only shows SELECTED rows. Empty preview when nothing is selected.
+  const selectedRows = state.printer.rows.filter(r => r.selected);
+  if (selectedRows.length === 0) {
+    body.innerHTML = `<div style="color: var(--muted); font-size: 12px; text-align: center; padding: 40px;">Select rows in the table to preview the sheet layout.</div>`;
+    el('printerPreviewInfo').textContent = '— pages';
     return;
   }
   const isLandscape = state.printer.orientation === 'landscape';
@@ -2042,7 +2121,7 @@ function renderPrinterPreview() {
   const gapH = parseFloat(state.printer.gapH) || 0;
   const gapV = parseFloat(state.printer.gapV) || 0;
 
-  const items = expandPrinterQueue();
+  const items = expandPrinterQueue(selectedRows);
   const pages = paginate(pageW, pageH, margin, gapH, gapV, items);
 
   el('printerPreviewInfo').textContent = `${pages.length} page${pages.length===1?'':'s'} · ${items.length} labels`;
@@ -2123,9 +2202,10 @@ function paginate(pageW, pageH, marginMm, gapH, gapV, items) {
   return pages;
 }
 
-function expandPrinterQueue() {
+function expandPrinterQueue(rowsOverride) {
   const items = [];
-  for (const row of state.printer.rows) {
+  const src = rowsOverride || state.printer.rows;
+  for (const row of src) {
     const dims = effectiveDimsForRow(row);
     const n = Math.max(1, row.copies || 1);
     for (let i = 0; i < n; i++) items.push({ row, w: dims.w, h: dims.h });
@@ -2223,28 +2303,16 @@ function resolveTapeWidthCurrent() {
   return resolveTapeWidth(_lastPrinterStatus);
 }
 
-/* Slice 2: maker label height = tape width. Update state.maker.formatH and the
-   readonly H input whenever tape width changes (printer connects, user picks
-   override, etc.). Also offers to update existing rows when the change is
-   user-initiated and rows already exist at the previous height. */
-function updateMakerFormatHeight(opts = {}) {
-  const { offerToUpdateRows = false } = opts;
+/* Slice 2: maker label height default = tape width. Update state.maker.formatH and
+   the readonly H input whenever tape width changes (printer connects, user picks
+   override, etc.). Slice 3: existing rows are NEVER touched — only the default
+   for next-row-added changes. */
+function updateMakerFormatHeight() {
   const newH = resolveTapeWidthCurrent();
   if (state.maker.formatH === newH) return;
-  const oldH = state.maker.formatH;
   state.maker.formatH = newH;
   const inp = el('makerH'); if (inp) inp.value = newH;
-  if (offerToUpdateRows && state.maker.rows.length > 0) {
-    const rowsAtOldH = state.maker.rows.filter(r => r.h === oldH).length;
-    if (rowsAtOldH > 0) {
-      if (confirm(`Tape width changed to ${newH}mm. Update ${rowsAtOldH} existing Label Maker row${rowsAtOldH===1?'':'s'} to match?`)) {
-        state.maker.rows.forEach(r => { if (r.h === oldH) r.h = newH; });
-        persistMakerRows(); renderTable('maker');
-      }
-    }
-  }
   persistConfig();
-  schedulePreview();
 }
 
 function tapeWidthMismatchWarning(effectiveWidth, printerStatus) {
@@ -2402,20 +2470,27 @@ async function printRowToTape(row, btnEl) {
     alert(`Printer not connected.\n\n${detail}\n\nMake sure:\n• PT-P700 is plugged into the Pi via USB\n• Power is on\n• The PLite green LED is OFF\n• Tape cassette is installed`);
     return;
   }
-  const tapeWidth = resolveTapeWidth(status);
-  const maxPrintPx = resolveMaxPrintPx(tapeWidth, status);
-  const mismatch = tapeWidthMismatchWarning(tapeWidth, status);
+
+  // Slice 3: row dimensions are immutable; the row's stored h IS the tape width
+  // we must print at. If the loaded cartridge doesn't match, refuse outright.
+  const rowTapeWidth = row.h;
+  if (status.tape_width_mm && Math.abs(status.tape_width_mm - rowTapeWidth) > 0.01) {
+    alert(`Can't print this label.\n\n` +
+          `• Label requires ${rowTapeWidth}mm tape\n` +
+          `• Printer has ${status.tape_width_mm}mm cartridge loaded\n\n` +
+          `Load matching tape and try again.`);
+    return;
+  }
+  const maxPrintPx = resolveMaxPrintPx(rowTapeWidth, status);
   const copies = Math.max(1, parseInt(row.copies || 1));
-  const tapeSource = (state.tapeWidthMm === 'auto') ? 'from printer' : 'user choice';
-  let confirmMsg = `Print to ${status.model || 'tape printer'}?\n` +
-                   `• Tape: ${tapeWidth}mm (${tapeSource})\n` +
-                   `• Copies: ${copies}\n` +
-                   `• Content: ${row.line1 || row.id}`;
-  if (mismatch) confirmMsg += `\n\n⚠ ${mismatch}`;
+  const confirmMsg = `Print to ${status.model || 'tape printer'}?\n` +
+                     `• Tape: ${rowTapeWidth}mm\n` +
+                     `• Copies: ${copies}\n` +
+                     `• Content: ${row.line1 || row.id}`;
   if (!confirm(confirmMsg)) return;
 
   let pngDataUrl;
-  try { pngDataUrl = await renderRowToTapePng(row, tapeWidth, maxPrintPx); }
+  try { pngDataUrl = await renderRowToTapePng(row, rowTapeWidth, maxPrintPx); }
   catch (e) { alert('Failed to render label: ' + e.message); return; }
 
   const original = btnEl ? btnEl.textContent : null;
@@ -2447,22 +2522,36 @@ async function printBatchToTape() {
   catch (e) { alert('Cannot reach printer endpoint.'); return; }
   if (!status.connected) { alert(`Printer not connected.\n\n${status.hint || status.error || 'unknown'}`); return; }
 
-  const tapeWidth = resolveTapeWidth(status);
+  // Slice 3: every selected row must have the same h, and it must match the cartridge.
+  // (The UI already prevents non-printable rows from being checked, but defend in depth.)
+  const uniqueHeights = [...new Set(selected.map(r => r.h))];
+  if (uniqueHeights.length > 1) {
+    alert(`Selected rows have different heights: ${uniqueHeights.map(h => h + 'mm').join(', ')}.\n\n` +
+          `Tape printing requires all selected labels to share the same height. Print them in separate batches.`);
+    return;
+  }
+  const batchHeight = uniqueHeights[0];
+  if (status.tape_width_mm && Math.abs(status.tape_width_mm - batchHeight) > 0.01) {
+    alert(`Can't print this batch.\n\n` +
+          `• Selected labels are ${batchHeight}mm tall\n` +
+          `• Printer has ${status.tape_width_mm}mm cartridge loaded\n\n` +
+          `Load matching tape and try again.`);
+    return;
+  }
+
+  const tapeWidth = batchHeight;
   const maxPrintPx = resolveMaxPrintPx(tapeWidth, status);
-  const mismatch = tapeWidthMismatchWarning(tapeWidth, status);
-  const tapeSource = (state.tapeWidthMm === 'auto') ? 'from printer' : 'user choice';
 
   const totalContentMm = expanded.reduce((s, r) => s + effectiveDimsForRow(r).w, 0);
   const leaderMm = 25;
   const totalTapeMm = totalContentMm + leaderMm;
   const savedVsIndividualMm = (expanded.length - 1) * leaderMm;
 
-  let confirmMsg =
+  const confirmMsg =
     `Print ${expanded.length} labels as ONE batch on ${status.model || 'tape printer'}?\n\n` +
-    `• Tape: ${tapeWidth}mm (${tapeSource})\n` +
+    `• Tape: ${tapeWidth}mm\n` +
     `• Total tape used: ~${totalTapeMm.toFixed(0)}mm (${(totalTapeMm/25.4).toFixed(1)}")\n` +
     `• Savings vs printing individually: ~${savedVsIndividualMm}mm`;
-  if (mismatch) confirmMsg += `\n\n⚠ ${mismatch}`;
   if (!confirm(confirmMsg)) return;
 
   const btn = el('makerBatchBtn');
@@ -2569,49 +2658,35 @@ function updateStickyPrint() {
   }
   const ts = getTabState(tab); if (!ts) return;
   const total = ts.rows.length;
-  const selCount = ts.rows.filter(r => r.selected).length;
-  const labelCount = (selCount > 0 ? ts.rows.filter(r=>r.selected) : ts.rows)
-                       .reduce((s,r) => s + Math.max(1, r.copies||1), 0);
   if (total === 0) { bar.classList.remove('visible'); document.body.classList.remove('has-sticky-print'); return; }
 
+  const selectedRows = ts.rows.filter(r => r.selected);
+  const selCount = selectedRows.length;
+  const labelCount = selectedRows.reduce((s,r) => s + Math.max(1, r.copies||1), 0);
+
+  // Slice 3: only "Print Selected" — clearer single-action UX. Empty selection = disabled.
   let summaryHtml, btnHtml;
   if (tab === 'maker') {
-    const target = selCount > 0 ? `${selCount} selected` : `all ${total}`;
-    summaryHtml = `<b>${labelCount}</b> labels · ${target}`;
-    btnHtml = `
-      <button class="secondary-btn" id="makerBatchAllBtn">Print All</button>
-      <button class="primary-btn" id="makerBatchBtn">⎙ Print Selected to Tape</button>`;
+    summaryHtml = selCount === 0
+      ? `<span style="color:var(--muted);">Select rows in the table</span>`
+      : `<b>${labelCount}</b> label${labelCount===1?'':'s'} · ${selCount} row${selCount===1?'':'s'} selected`;
+    btnHtml = `<button class="primary-btn" id="makerBatchBtn" ${selCount===0?'disabled':''}>⎙ Print Selected to Tape</button>`;
   } else {
-    const target = selCount > 0 ? `${selCount} selected` : `all ${total}`;
-    summaryHtml = `<b>${labelCount}</b> labels · ${target}`;
-    btnHtml = `
-      <button class="secondary-btn" id="printerAllBtn">Print All</button>
-      <button class="primary-btn printer" id="printerSelBtn">📄 Print Sheet</button>`;
+    summaryHtml = selCount === 0
+      ? `<span style="color:var(--muted);">Select rows in the table</span>`
+      : `<b>${labelCount}</b> label${labelCount===1?'':'s'} · ${selCount} row${selCount===1?'':'s'} selected`;
+    btnHtml = `<button class="primary-btn printer" id="printerSelBtn" ${selCount===0?'disabled':''}>📄 Print Sheet</button>`;
   }
   bar.innerHTML = `<div class="summary">${summaryHtml}</div>${btnHtml}`;
   bar.classList.add('visible');
   document.body.classList.add('has-sticky-print');
 
-  // Wire (re-wire) buttons
   if (tab === 'maker') {
-    const sel = el('makerBatchBtn'); if (sel) sel.addEventListener('click', () => {
-      if (selCount === 0) { alert('No rows selected. Tick rows or use "Print All".'); return; }
-      printBatchToTape();
-    });
-    const all = el('makerBatchAllBtn'); if (all) all.addEventListener('click', () => {
-      // Select all then batch-print, but only for the duration of this call
-      const prev = state.maker.rows.map(r => r.selected);
-      state.maker.rows.forEach(r => r.selected = true);
-      printBatchToTape().finally(() => {
-        state.maker.rows.forEach((r,i) => r.selected = prev[i]);
-        renderTable('maker'); updateStickyPrint();
-      });
-    });
+    const sel = el('makerBatchBtn');
+    if (sel) sel.addEventListener('click', () => { if (selCount > 0) printBatchToTape(); });
   } else {
-    const sel = el('printerSelBtn'); if (sel) sel.addEventListener('click', () => {
-      if (selCount === 0) printAllSheet(); else printSelectedSheet();
-    });
-    const all = el('printerAllBtn'); if (all) all.addEventListener('click', () => printAllSheet());
+    const sel = el('printerSelBtn');
+    if (sel) sel.addEventListener('click', () => { if (selCount > 0) printSelectedSheet(); });
   }
 }
 
@@ -2619,7 +2694,6 @@ function updateStickyPrint() {
 function toggleUrlField() {
   const show = state.qrMode === 'url' ? '' : 'none';
   const a = el('urlPrefixField'); if (a) a.style.display = show;
-  const b = el('urlPrefixField2'); if (b) b.style.display = show;
 }
 
 function renderTab(tabName) {
@@ -2665,37 +2739,32 @@ function setupListeners() {
   if (tw) tw.addEventListener('change', () => {
     state.tapeWidthMm = tw.value; persistConfig();
     updateTapeStatusHint();
-    // User-initiated tape width change: offer to update existing maker rows
-    updateMakerFormatHeight({ offerToUpdateRows: true });
+    // Slice 3: existing rows are immutable — just update the format default for next-add.
+    // Re-render the table so printability indicators reflect the new tape width.
+    updateMakerFormatHeight();
+    renderTable('maker');
     schedulePreview();
   });
   const tc = el('tapeColorSel');
-  if (tc) tc.addEventListener('change', () => { state.tapeColor = tc.value; persistConfig(); schedulePreview(); });
+  if (tc) tc.addEventListener('change', () => { state.tapeColor = tc.value; persistConfig(); });
 
-  // QR (mirrored across both tab copies)
-  ['qrMode','qrMode2'].forEach(id => {
-    const e = el(id);
-    if (e) e.addEventListener('change', () => {
-      state.qrMode = e.value;
-      ['qrMode','qrMode2'].forEach(idd => { const ee = el(idd); if (ee && ee !== e) ee.value = state.qrMode; });
-      toggleUrlField();
-      // Update QR payloads for all rows (registry refresh)
-      state.maker.rows.forEach(logRow);
-      state.printer.rows.forEach(logRow);
-      persistConfig();
-      schedulePreview();
-    });
+  // QR (single instance lives in Options tab)
+  const qrModeEl = el('qrMode');
+  if (qrModeEl) qrModeEl.addEventListener('change', () => {
+    state.qrMode = qrModeEl.value;
+    toggleUrlField();
+    state.maker.rows.forEach(logRow);
+    state.printer.rows.forEach(logRow);
+    persistConfig();
+    schedulePreview();
   });
-  ['urlPrefix','urlPrefix2'].forEach(id => {
-    const e = el(id);
-    if (e) e.addEventListener('input', () => {
-      state.urlPrefix = e.value;
-      ['urlPrefix','urlPrefix2'].forEach(idd => { const ee = el(idd); if (ee && ee !== e) ee.value = state.urlPrefix; });
-      state.maker.rows.forEach(logRow);
-      state.printer.rows.forEach(logRow);
-      persistConfig();
-      schedulePreview();
-    });
+  const urlPrefixEl = el('urlPrefix');
+  if (urlPrefixEl) urlPrefixEl.addEventListener('input', () => {
+    state.urlPrefix = urlPrefixEl.value;
+    state.maker.rows.forEach(logRow);
+    state.printer.rows.forEach(logRow);
+    persistConfig();
+    schedulePreview();
   });
 
   // Toolbar buttons (work for both tabs via data-table)
@@ -2716,9 +2785,17 @@ function setupListeners() {
     renderTab(b.dataset.table);
   }));
   document.querySelectorAll('.select-all-chk').forEach(c => c.addEventListener('change', e => {
-    const ts = getTabState(c.dataset.table); if (!ts) return;
-    ts.rows.forEach(r => r.selected = e.target.checked);
-    renderTable(c.dataset.table); updateStickyPrint();
+    const tab = c.dataset.table;
+    const ts = getTabState(tab); if (!ts) return;
+    // Slice 3: in Label Maker, select-all only ticks printable rows
+    const loadedMm = (tab === 'maker' && _lastPrinterStatus && _lastPrinterStatus.connected)
+      ? (_lastPrinterStatus.tape_width_mm || null)
+      : null;
+    ts.rows.forEach(r => {
+      const printable = (tab !== 'maker' || loadedMm === null || Math.abs(r.h - loadedMm) < 0.01);
+      r.selected = e.target.checked && printable;
+    });
+    renderTable(tab); updateStickyPrint(); schedulePreview();
   }));
   document.querySelectorAll('.reissue-btn').forEach(b => b.addEventListener('click', async () => {
     const ts = getTabState(b.dataset.table); if (!ts) return;
@@ -2799,12 +2876,18 @@ async function refreshPrinterStatus() {
   try {
     const r = await fetch('/api/printer/status', { cache: 'no-store' });
     const d = await r.json();
+    const prevWidth = _lastPrinterStatus ? _lastPrinterStatus.tape_width_mm : null;
+    const prevConnected = _lastPrinterStatus ? _lastPrinterStatus.connected : null;
     _lastPrinterStatus = d;
     renderPrinterStatusText(d);
     updateTapeStatusHint();
-    // Slice 2: keep maker format height synced with detected tape (no prompt — auto on detect)
     updateMakerFormatHeight();
-  } catch (e) { dot.className = 'dot err'; text.textContent = 'Could not query printer'; _lastPrinterStatus = null; }
+    // Slice 3: if cartridge width or connection state changed, re-render the Maker table
+    // so printability indicators refresh.
+    const widthChanged = (d.tape_width_mm || null) !== prevWidth;
+    const connectionChanged = !!d.connected !== !!prevConnected;
+    if (widthChanged || connectionChanged) renderTable('maker');
+  } catch (e) { dot.className = 'dot err'; text.textContent = 'Could not query printer'; _lastPrinterStatus = null; renderTable('maker'); }
   finally { if (btn) btn.disabled = false; }
 }
 

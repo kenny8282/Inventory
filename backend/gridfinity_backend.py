@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.12.0"  # Forge restructure: tabs (Label Maker / Printer / Registry), per-tab rows + presets
+APP_VERSION = "1.13.0"  # Forge: per-row color, row immutability, printability gating, Options tab
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
