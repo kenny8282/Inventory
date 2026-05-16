@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.11.0"  # Forge: tape size + tape color dropdowns; preset storage keys
+APP_VERSION = "1.12.0"  # Forge restructure: tabs (Label Maker / Printer / Registry), per-tab rows + presets
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
@@ -41,10 +41,13 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 ALLOWED_KEYS = {
     "gflf:used",
     "gflf:registry",
-    "gflf:rows",
+    "gflf:rows",            # legacy (pre-v1.12) — kept readable for the one-time migration archive
+    "gflf:rows_archive",    # v1.12 archive of pre-restructure rows (so users can recover if needed)
+    "gflf:maker_rows",      # v1.12+: Label Maker tab rows
+    "gflf:printer_rows",    # v1.12+: Printer tab rows
     "gflf:config",
-    "gflf:tape_presets",   # user-saved {name, desc, widthMm, lengthMm} for tape mode
-    "gflf:sheet_presets",  # user-saved {name, desc, widthMm, heightMm, orientation} for sheet mode
+    "gflf:tape_presets",    # user-saved {id,name,desc,w,h} for Label Maker tab
+    "gflf:sheet_presets",   # user-saved {id,name,desc,w,h} for Printer tab
 }
 
 app = Flask(__name__)
