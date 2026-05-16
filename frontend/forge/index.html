@@ -76,6 +76,8 @@
     margin-bottom: 18px;
     font-size: 12px;
     font-family: 'JetBrains Mono', monospace;
+    flex-wrap: wrap;
+    row-gap: 6px;
   }
   .printer-status .dot {
     width: 10px; height: 10px; border-radius: 50%;
@@ -96,7 +98,11 @@
   }
   .printer-status #printerText {
     flex: 1;
+    min-width: 0;
     color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .printer-status .printer-refresh {
     background: none;
@@ -106,9 +112,16 @@
     padding: 2px 8px;
     cursor: pointer;
     font-family: 'JetBrains Mono', monospace;
+    flex-shrink: 0;
   }
   .printer-status .printer-refresh:hover { color: var(--ink); border-color: var(--ink); }
   .printer-status .printer-refresh:disabled { opacity: 0.4; cursor: wait; }
+  /* On narrow phones, drop the "PRINTER:" label entirely — the dot color already
+     conveys connection state and the short status text speaks for itself. */
+  @media (max-width: 480px) {
+    .printer-status .label { display: none; }
+    .printer-status { padding: 6px 10px; gap: 6px; }
+  }
   h1 small {
     display: block;
     font-size: 10px;
@@ -2990,13 +3003,8 @@ function updateTapeStatusHint() {
   const text = el('printerText'); if (!text) return;
   const d = _lastPrinterStatus;
   if (!d) return;
-  // Re-render base
   renderPrinterStatusText(d);
-  // If disconnected and an override is set, append a preview-as note
-  if (!d.connected && state.tapeOverrideMm) {
-    const n = parseInt(state.tapeOverrideMm, 10);
-    if (!isNaN(n)) text.textContent = text.textContent + ` · preview ${n}mm`;
-  }
+  // No "preview Nmm" suffix — the dropdown itself shows the override value.
 }
 
 function renderPrinterStatusText(d) {
@@ -3004,18 +3012,19 @@ function renderPrinterStatusText(d) {
   if (!dot || !text) return;
   if (d.connected) {
     dot.className = 'dot ok';
-    const parts = [];
-    if (d.model) parts.push(d.model);
-    if (d.tape_width_mm) parts.push(`${d.tape_width_mm}mm tape`);
-    else if (d.tape_width_px) parts.push(`${d.tape_width_px}px tape`);
-    if (d.tape_color) parts.push(`${d.tape_color} tape`);
-    text.textContent = parts.join(' · ') || 'Ready';
+    // Minimal: just tape size. Model name + verbose details removed (cluttered mobile).
+    if (d.tape_width_mm) {
+      text.textContent = `${d.tape_width_mm}mm`;
+    } else if (d.tape_width_px) {
+      text.textContent = `${d.tape_width_px}px`;
+    } else {
+      text.textContent = 'Ready';
+    }
   } else {
     dot.className = 'dot err';
-    let msg = 'Not connected';
-    if (d.hint) msg += ` — ${d.hint}`;
-    else if (d.error) msg += ` — ${d.error}`;
-    text.textContent = msg;
+    // Short fixed string — no hints, no raw error dumps, no PLite tips.
+    // (Those are still surfaced in the print-attempt error dialog if the user tries.)
+    text.textContent = 'Not connected';
   }
 }
 
@@ -3039,7 +3048,7 @@ async function refreshPrinterStatus() {
     const connectionChanged = !!d.connected !== !!prevConnected;
     if (widthChanged || connectionChanged) { renderTable('maker'); schedulePreview(); }
   } catch (e) {
-    dot.className = 'dot err'; text.textContent = 'Could not query printer';
+    dot.className = 'dot err'; text.textContent = 'Offline';
     _lastPrinterStatus = null;
     updateOverrideVisibility();
     renderTable('maker');

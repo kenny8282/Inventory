@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.14.0"  # Forge: Tape Output panel removed, manual tape override in status strip, height-grouped sheet pagination, color in Label Format
+APP_VERSION = "1.14.1"  # Forge: trimmed printer status strip for mobile fit
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
