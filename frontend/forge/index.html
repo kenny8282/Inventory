@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Gridfinity Labels</title>
+<title>Gridfinity Label Forge</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Archivo:wght@500;700;800;900&display=swap" rel="stylesheet">
@@ -16,7 +16,6 @@
     --rule: #161616;
     --accent: #c8341a;
     --accent-2: #1a4d8f;
-    --green: #1a5d1a;
     --muted: #6b6862;
     --grid: rgba(22,22,22,0.05);
     --row-alt: #f5f2e9;
@@ -40,7 +39,7 @@
     border-bottom: 2px solid var(--rule);
     padding-bottom: 14px;
     margin-bottom: 22px;
-    display: flex; align-items: center; justify-content: space-between;
+    display: flex; align-items: flex-end; justify-content: space-between;
     flex-wrap: wrap; gap: 16px;
   }
   h1 {
@@ -63,9 +62,9 @@
     padding: 4px 8px;
     font-weight: 700;
     font-family: 'Archivo', sans-serif;
+    align-self: flex-start;
   }
   header .home-link:hover { color: var(--ink); border-color: var(--ink); }
-
   /* ---- PRINTER STATUS STRIP ---- */
   .printer-status {
     display: flex;
@@ -110,6 +109,24 @@
   }
   .printer-status .printer-refresh:hover { color: var(--ink); border-color: var(--ink); }
   .printer-status .printer-refresh:disabled { opacity: 0.4; cursor: wait; }
+  h1 small {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: var(--muted);
+    font-weight: 500;
+    margin-top: 6px;
+  }
+  .meta {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-align: right;
+    line-height: 1.7;
+  }
+  .meta .stat { color: var(--ink); font-weight: 700; font-size: 11px; }
+  .meta .schema { color: var(--accent-2); font-weight: 700; }
 
   /* ------- LAYOUT ------- */
   .layout {
@@ -136,7 +153,11 @@
     margin-bottom: 12px;
     padding-bottom: 8px;
     border-bottom: 1px dashed var(--rule);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
   }
+  .panel h2 .num { color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 10px; }
 
   /* ------- FIELDS ------- */
   .field { margin-bottom: 12px; }
@@ -191,55 +212,6 @@
   button.warn:hover { background: var(--accent); border-color: var(--accent); color: white; }
   .btn-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
   .btn-row button { flex: 1; min-width: 0; }
-  .btn-row button.compact { flex: 0 0 auto; }
-  .btn-print-primary {
-    background: var(--green) !important;
-    font-size: 12px;
-  }
-  .btn-print-primary:hover {
-    background: #2a8a2a !important;
-  }
-
-  /* ------- KEBAB MENU ------- */
-  .menu-wrap { position: relative; }
-  .menu-btn {
-    background: transparent;
-    color: var(--ink);
-    border: 1px solid var(--rule);
-    padding: 9px 12px;
-    font-size: 14px;
-    line-height: 1;
-  }
-  .menu-btn:hover { background: var(--ink); color: var(--paper); }
-  .menu-dropdown {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 4px);
-    background: var(--paper);
-    border: 1.5px solid var(--rule);
-    box-shadow: 4px 4px 0 var(--rule);
-    z-index: 10;
-    min-width: 220px;
-    display: none;
-  }
-  .menu-dropdown.open { display: block; }
-  .menu-dropdown button {
-    width: 100%;
-    background: transparent;
-    color: var(--ink);
-    border: none;
-    border-bottom: 1px solid rgba(22,22,22,0.1);
-    text-align: left;
-    padding: 10px 14px;
-    font-size: 11px;
-    cursor: pointer;
-    display: block;
-    margin: 0;
-  }
-  .menu-dropdown button:last-child { border-bottom: none; }
-  .menu-dropdown button:hover { background: var(--ink); color: var(--paper); }
-  .menu-dropdown button.danger { color: var(--accent); }
-  .menu-dropdown button.danger:hover { background: var(--accent); color: white; }
 
   /* ------- PRESET PICKER ------- */
   .preset-grid {
@@ -542,6 +514,15 @@
   }
   .checkbox-row input { width: auto; }
   .checkbox-row label { margin: 0; font-size: 11px; text-transform: none; letter-spacing: 0; color: var(--ink); }
+  .alert {
+    background: var(--row-alt);
+    border-left: 3px solid var(--accent-2);
+    padding: 8px 10px;
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: var(--ink);
+  }
+  .alert b { color: var(--accent-2); font-family: 'Archivo', sans-serif; letter-spacing: 0.05em; }
   .toolbar {
     display: flex;
     gap: 8px;
@@ -582,21 +563,28 @@
 <body>
 <div class="app">
 
-  <!-- HEADER: simplified. No subtitle, no telemetry strip. -->
+  <!-- HEADER -->
   <header>
-    <a href="/" class="home-link">&larr; Home</a>
+    <a href="/" class="home-link">← Home</a>
     <h1>
-      <a href="/">GRIDFINITY <span class="accent">/</span> LABELS</a>
+      <a href="/">GRIDFINITY <span class="accent">//</span> LABEL FORGE</a>
+      <small>BATCH LABEL MAKER · UNIQUE-ID INVENTORY · v1 SCHEMA</small>
     </h1>
-    <div style="width: 60px;"></div>
+    <div class="meta">
+      <div>STORAGE: <span id="backendIndicator"></span></div>
+      <div>SCHEMA: <span class="schema">gridfinity-inventory/v1</span></div>
+      <div>ISSUED: <span class="stat" id="usedCount">0</span> codes</div>
+      <div>QUEUE: <span class="stat" id="queueCount">0</span> labels</div>
+    </div>
   </header>
 
-  <!-- Printer status strip -->
+  <!-- Printer status strip: lives just under the header so users can
+       glance up and immediately see whether the printer is reachable. -->
   <div id="printerStatus" class="printer-status">
     <span class="dot" id="printerDot"></span>
-    <span class="label">Printer:</span>
-    <span id="printerText">checking&hellip;</span>
-    <button class="printer-refresh" onclick="refreshPrinterStatus()" title="Refresh printer status">&#x21bb;</button>
+    <span class="label">PRINTER:</span>
+    <span id="printerText">checking…</span>
+    <button class="printer-refresh" onclick="refreshPrinterStatus()" title="Refresh printer status">↻</button>
   </div>
 
   <div class="layout">
@@ -604,9 +592,50 @@
     <!-- ============ LEFT: CONFIG ============ -->
     <div>
 
+      <!-- TAPE OUTPUT (Slice 1) -->
+      <div class="panel">
+        <h2><span>Tape Output</span><span class="num">TAPE</span></h2>
+        <div class="row">
+          <div class="field" style="margin-bottom: 0;">
+            <label>Tape width</label>
+            <select id="tapeWidthSel">
+              <option value="auto" selected>Auto (use printer)</option>
+              <option value="6">6 mm</option>
+              <option value="9">9 mm</option>
+              <option value="12">12 mm</option>
+              <option value="18">18 mm</option>
+              <option value="24">24 mm</option>
+            </select>
+          </div>
+          <div class="field" style="margin-bottom: 0;">
+            <label>Tape color (preview)</label>
+            <select id="tapeColorSel">
+              <option value="white-black" selected>White / Black</option>
+              <option value="yellow-black">Yellow / Black</option>
+              <option value="clear-black">Clear / Black</option>
+              <option value="red-white">Red / White</option>
+              <option value="red-black">Red / Black</option>
+              <option value="blue-white">Blue / White</option>
+              <option value="blue-black">Blue / Black</option>
+              <option value="green-white">Green / White</option>
+              <option value="green-black">Green / Black</option>
+              <option value="black-white">Black / White</option>
+              <option value="white-red">White / Red</option>
+              <option value="white-blue">White / Blue</option>
+            </select>
+          </div>
+        </div>
+        <div class="hint">
+          <b>Auto</b> uses the cartridge currently in the printer. Pick a specific width to design for an unconnected printer or a different cartridge.
+          Tape color is preview-only — the printer prints whatever cassette is loaded.
+          <br><br>
+          <b>Note:</b> the preview still uses the Label Format dimensions below. Tape printing uses the width above. Mode-aware preview lands in the next update.
+        </div>
+      </div>
+
       <!-- LABEL FORMAT -->
       <div class="panel">
-        <h2>Label format</h2>
+        <h2><span>Label Format</span><span class="num">01</span></h2>
         <div class="preset-grid" id="presetGrid"></div>
         <div class="row">
           <div class="field" style="margin-bottom: 0;">
@@ -618,36 +647,39 @@
             <input type="number" id="customH" step="0.1" />
           </div>
         </div>
-        <div class="hint">Custom dimensions override preset. Text auto-fits the label.</div>
+        <div class="hint">Custom dimensions override preset. QR is sized to label height minus padding (always max possible). Text auto-fits the remaining width.</div>
       </div>
 
-      <!-- QR CONFIG: simplified, no FORWARD COMPAT callout -->
+      <!-- QR CONFIG -->
       <div class="panel">
-        <h2>QR code</h2>
+        <h2><span>QR Defaults</span><span class="num">02</span></h2>
         <div class="field">
-          <label>What the QR code contains</label>
+          <label>QR payload format</label>
           <select id="qrMode">
-            <option value="id">Just the ID code</option>
-            <option value="combined" selected>ID + item name</option>
-            <option value="json">Full label info</option>
-            <option value="url">Web link to label</option>
+            <option value="id">ID only (X7K2M)</option>
+            <option value="combined" selected>ID + primary text</option>
+            <option value="json">JSON record (full)</option>
+            <option value="url">URL prefix + ID</option>
           </select>
         </div>
         <div class="field" id="urlPrefixField" style="display:none;">
-          <label>Web link prefix</label>
+          <label>URL prefix</label>
           <input type="text" id="urlPrefix" placeholder="https://inv.local/" />
+        </div>
+        <div class="alert">
+          <b>FORWARD COMPAT:</b> Whatever payload you choose, the full record (id, lines, format) is logged to the registry. Your future inventory app reads the registry directly — QR only needs to encode the ID for lookups.
         </div>
       </div>
 
-      <!-- PRINT ON PAPER -->
+      <!-- PRINT CONFIG -->
       <div class="panel">
-        <h2>Print on paper</h2>
+        <h2><span>Sheet &amp; Print</span><span class="num">03</span></h2>
         <div class="row">
           <div class="field">
             <label>Page size</label>
             <select id="pageSize">
-              <option value="a4" selected>A4</option>
-              <option value="letter">US Letter</option>
+              <option value="a4" selected>A4 (210×297mm)</option>
+              <option value="letter">US Letter (8.5×11")</option>
             </select>
           </div>
           <div class="field">
@@ -667,41 +699,31 @@
         </div>
         <div class="checkbox-row" style="margin-bottom: 8px;">
           <input type="checkbox" id="cutMarks" checked />
-          <label for="cutMarks">Print cut guides</label>
+          <label for="cutMarks">Faint cut guides (printable)</label>
         </div>
         <div class="hint" id="capacityHint" style="margin-bottom: 8px;"></div>
         <div class="btn-row">
-          <button id="printBtn">&#9000; Print sheet</button>
+          <button id="printBtn">⎙ Print Sheet</button>
         </div>
       </div>
 
-      <!-- BACKUP & RESTORE -->
+      <!-- DATA -->
       <div class="panel">
-        <h2>Backup &amp; restore</h2>
+        <h2><span>Registry &amp; Data</span><span class="num">04</span></h2>
         <div class="hint" style="margin-bottom: 10px;">
-          Save your inventory to a file, or restore from one. Useful if your SD card ever fails.
+          All issued labels are logged to a v1 inventory file. Export now, import into your future inventory app — same schema both ways.
         </div>
         <div class="btn-row">
-          <button id="backupBtn">&#128190; Backup my inventory</button>
+          <button id="exportJsonBtn" class="secondary">⤓ Export JSON</button>
+          <button id="exportCsvBtn" class="secondary">⤓ Export CSV</button>
         </div>
         <div class="btn-row" style="margin-top: 6px;">
-          <button id="restoreBtn" class="secondary">&#8682; Restore from backup</button>
-          <input type="file" id="importFile" accept="application/json,application/zip,.json,.zip" style="display:none;" />
-        </div>
-        <div class="btn-row" style="margin-top: 14px;">
-          <button id="csvImportBtn" class="secondary">&#128203; Add labels from spreadsheet (CSV)</button>
-          <input type="file" id="csvImportFile" accept="text/csv,.csv" style="display:none;" />
+          <button id="importBtn" class="secondary">⤒ Import JSON</button>
+          <input type="file" id="importFile" accept="application/json,.json" style="display:none;" />
         </div>
         <div class="btn-row" style="margin-top: 6px;">
-          <button id="csvExportBtn" class="secondary">&#128202; Export labels as spreadsheet (CSV)</button>
+          <button id="resetBtn" class="secondary warn">⚠ Reset Everything</button>
         </div>
-        <details style="margin-top: 14px; font-size: 11px;">
-          <summary style="cursor: pointer; color: var(--muted); font-family: Archivo, sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; font-size: 10px;">Advanced</summary>
-          <div class="btn-row" style="margin-top: 8px;">
-            <button id="resetBtn" class="secondary warn">&#9888; Reset everything</button>
-          </div>
-          <div class="hint">Erases all labels and inventory. Cannot be undone.</div>
-        </details>
       </div>
 
     </div>
@@ -709,22 +731,17 @@
     <!-- ============ RIGHT: TABLE + PREVIEW ============ -->
     <div>
 
-      <!-- ITEMS TABLE: simplified toolbar with kebab menu for power features -->
+      <!-- ITEMS TABLE -->
       <div class="panel" style="padding: 14px;">
         <div class="toolbar">
-          <button id="addRowBtn">+ Add label</button>
+          <button id="addRowBtn">+ Add Row</button>
+          <button id="addBlankRowsBtn" class="secondary">+ 5 Blank Rows</button>
+          <button id="dupSelectedBtn" class="secondary">Duplicate Selected</button>
+          <button id="delSelectedBtn" class="secondary warn">Delete Selected</button>
           <div class="spacer"></div>
-          <button id="printBatchBtn" class="btn-print-primary">&#9000;&#9000; Print selected to tape</button>
-          <div class="menu-wrap">
-            <button id="moreMenuBtn" class="menu-btn" title="More actions">&hellip;</button>
-            <div id="moreMenuDropdown" class="menu-dropdown">
-              <button id="addBlankRowsBtn">+ Add 5 blank labels</button>
-              <button id="dupSelectedBtn">Duplicate selected</button>
-              <button id="delSelectedBtn" class="danger">Delete selected</button>
-              <button id="reissueBtn">Re-issue IDs</button>
-              <button id="clearTableBtn" class="danger">Clear all labels</button>
-            </div>
-          </div>
+          <button id="printBatchBtn" style="background:#1a5d1a;">⎙⎙ Print Selected to Tape</button>
+          <button id="reissueBtn" class="secondary">⟳ Reissue IDs</button>
+          <button id="clearTableBtn" class="secondary warn">Clear Table</button>
         </div>
 
         <div class="table-wrap">
@@ -733,12 +750,12 @@
               <tr>
                 <th style="width: 30px;"><input type="checkbox" id="selectAll" /></th>
                 <th style="width: 64px;">ID</th>
-                <th class="col-line1">Line 1 (biggest)</th>
+                <th class="col-line1">Line 1 (primary)</th>
                 <th class="col-line2">Line 2</th>
                 <th class="col-line3">Line 3</th>
                 <th style="width: 50px;">QR</th>
                 <th style="width: 60px;">Copies</th>
-                <th style="width: 80px;">Size</th>
+                <th style="width: 80px;">Format</th>
                 <th style="width: 90px;"></th>
               </tr>
             </thead>
@@ -746,7 +763,7 @@
           </table>
         </div>
         <div class="hint" style="margin-top: 8px;">
-          <b>Line 1</b> is biggest, <b>Line 2</b> medium, <b>Line 3</b> smallest. Leave a line blank to skip it.
+          <b>Line 1</b> auto-sizes largest, <b>Line 2</b> medium, <b>Line 3</b> smallest. Leave a line blank to skip it. To force a line break inside a single line, use <b>Shift+Enter</b> (multi-line cells).
         </div>
       </div>
 
@@ -755,7 +772,7 @@
         <div class="preview-header">
           <div style="display: flex; gap: 14px; align-items: center;">
             <span>Preview</span>
-            <span class="info" id="previewInfo">&mdash; mm &times; &mdash; mm</span>
+            <span class="info" id="previewInfo">— mm × — mm</span>
           </div>
           <div class="tabs">
             <button class="tab active" data-tab="single">Single</button>
@@ -765,7 +782,7 @@
         <div class="preview-body" id="previewBody">
           <div class="single-stage" id="singleStage">
             <div style="color: var(--muted); font-size: 12px; text-align: center; padding: 40px;">
-              Add a label to see a preview here.
+              Add a row to the table to see a preview here.
             </div>
           </div>
         </div>
@@ -779,16 +796,20 @@
 
 <script>
 /* ============================================================================
-   GRIDFINITY LABELS  (Forge UI Pass A)
-   Schema version retained for compatibility; not shown in UI anymore.
+   GRIDFINITY LABEL FORGE
+   Schema: gridfinity-inventory/v1
    ============================================================================ */
 
 const SCHEMA_VERSION = 'gridfinity-inventory/v1';
 
-/* ---- PRESETS ---- */
+/* ---- PRESETS (mm) ----
+   Standard Gridfinity label tab is ~12mm tall. Width per # of grid units (42mm
+   pitch, ~36-40mm usable per unit allowing tolerance & rounded corners).
+   Modern Gridfinity Case sizes are estimates for drawer-front labels; adjust
+   the custom W/H fields to match your specific drawers. */
 const PRESETS = [
-  { id: 'gfBox',   name: 'Gridfinity Box',     w: 40,  h: 12, desc: '40 x 12 mm bin tab' },
-  { id: 'mgcXL',   name: 'Modern Case XL',     w: 124, h: 13, desc: '124 x 13 mm drawer' },
+  { id: 'gfBox',   name: 'Gridfinity Box',     w: 40,  h: 12, desc: '40 × 12 mm bin tab' },
+  { id: 'mgcXL',   name: 'Modern Case XL',     w: 124, h: 13, desc: '124 × 13 mm drawer' },
 ];
 
 /* ---- STATE ---- */
@@ -796,12 +817,48 @@ const state = {
   presetId: 'gfBox',
   customW: null,
   customH: null,
-  rows: [],
-  used: new Set(),
-  registry: {},
+  rows: [],            // [{ uid, id, line1, line2, line3, qr, copies, formatId, created }]
+  used: new Set(),     // all IDs ever issued (persisted)
+  registry: {},        // id -> full record (persisted)
   previewTab: 'single',
+  // ---- TAPE OUTPUT (Slice 1) ----
+  // mode: 'tape' or 'sheet' — sets the foundation for the mode tabs in Slice 2.
+  //   Currently always 'tape' from the user's perspective since there's no UI
+  //   to switch yet; sheet output happens via the existing "Print Sheet" button.
+  // tapeWidthMm: 'auto' or a number (6, 9, 12, 18, 24). 'auto' means "use the
+  //   width the printer reports". A specific number means "design for this
+  //   tape" — useful when the printer is unplugged or you want to design for
+  //   a different cartridge.
+  // tapeColor: visual hint for preview only — the printer prints whatever
+  //   tape is loaded regardless. Stored as a {tape, ink} color pair.
+  mode: 'tape',
+  tapeWidthMm: 'auto',
+  tapeColor: 'white-black',
 };
 
+/* ---- TAPE COLOR SWATCHES ----
+   Maps swatch key → { tape: CSS color for tape background,
+                       ink: CSS color for text & QR }
+   Names match common Brother TZe cartridge label/text combos. Preview only —
+   the actual print uses whatever cassette is loaded. */
+const TAPE_COLORS = {
+  'white-black':  { tape: '#ffffff', ink: '#000000', name: 'White / Black text' },
+  'yellow-black': { tape: '#f6d33a', ink: '#000000', name: 'Yellow / Black text' },
+  'clear-black':  { tape: '#e8efe8', ink: '#000000', name: 'Clear / Black text' },
+  'red-white':    { tape: '#c8341a', ink: '#ffffff', name: 'Red / White text' },
+  'red-black':    { tape: '#e8857a', ink: '#000000', name: 'Red / Black text' },
+  'blue-white':   { tape: '#1a4d8f', ink: '#ffffff', name: 'Blue / White text' },
+  'blue-black':   { tape: '#8fb3d9', ink: '#000000', name: 'Blue / Black text' },
+  'green-white':  { tape: '#1a5d1a', ink: '#ffffff', name: 'Green / White text' },
+  'green-black':  { tape: '#8fc78f', ink: '#000000', name: 'Green / Black text' },
+  'black-white':  { tape: '#161616', ink: '#ffffff', name: 'Black / White text' },
+  'white-red':    { tape: '#ffffff', ink: '#c8341a', name: 'White / Red text' },
+  'white-blue':   { tape: '#ffffff', ink: '#1a4d8f', name: 'White / Blue text' },
+};
+
+/* ---- ID GENERATION ----
+   Alphabet excludes 0,O,1,I,L for human readability.
+   31 chars × 5 length = 28.6M combinations. */
 const ALPHA = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 const ID_LEN = 5;
 
@@ -823,20 +880,34 @@ async function issueId() {
   throw new Error('ID space exhausted');
 }
 
-/* ---- PERSISTENCE ---- */
+/* ---- PERSISTENCE ----
+   Storage backend selection (tried in order):
+   1. Server API at /api/* (when hosted on Pi with Flask backend) — shared
+      across all devices on the network
+   2. Browser localStorage — per-device, used when no server is available
+   3. window.storage (Claude environment)
+   4. In-memory (last resort)
+
+   The HTML transparently uses whichever is available. */
 const KEY_USED = 'gflf:used';
 const KEY_REG  = 'gflf:registry';
 const KEY_ROWS = 'gflf:rows';
 const KEY_CFG  = 'gflf:config';
+const KEY_TAPE_PRESETS  = 'gflf:tape_presets';   // reserved for user-saved tape presets (Slice 2+)
+const KEY_SHEET_PRESETS = 'gflf:sheet_presets';  // reserved for user-saved sheet presets (Slice 3+)
 
+// Backend types
 const BACKEND_API = 'api';
 const BACKEND_LOCAL = 'local';
 const BACKEND_CLAUDE = 'claude';
 const BACKEND_MEMORY = 'memory';
 
 let _backendType = BACKEND_MEMORY;
+let _backendLabel = 'memory only';
 
 async function _probeApi() {
+  // Try to reach /api/health with a short timeout. Only succeeds when the
+  // Flask backend is running on this host.
   try {
     const ctl = new AbortController();
     const t = setTimeout(() => ctl.abort(), 1500);
@@ -846,7 +917,7 @@ async function _probeApi() {
       const j = await r.json();
       if (j && j.ok) return true;
     }
-  } catch (e) {}
+  } catch (e) { /* api not available */ }
   return false;
 }
 
@@ -897,6 +968,7 @@ function _makeMemoryStorage() {
   };
 }
 
+// Initialize as localStorage/memory; upgrade to API after async probe.
 let _storage;
 try {
   if (typeof localStorage !== 'undefined') {
@@ -904,9 +976,11 @@ try {
     localStorage.removeItem('__gflf_test__');
     _storage = _makeLocalStorage();
     _backendType = BACKEND_LOCAL;
+    _backendLabel = 'this device only';
   } else if (typeof window !== 'undefined' && window.storage) {
     _storage = window.storage;
     _backendType = BACKEND_CLAUDE;
+    _backendLabel = 'claude env';
   } else {
     _storage = _makeMemoryStorage();
   }
@@ -919,12 +993,34 @@ async function _upgradeToApiIfAvailable() {
   if (ok) {
     _storage = _makeApiStorage();
     _backendType = BACKEND_API;
+    _backendLabel = 'shared on Pi';
+    updateBackendIndicator();
+    // Reload data from the server (overrides anything loaded from localStorage)
     await loadAll();
     renderAll();
+    // Start polling for changes from other devices
     startSyncPolling();
+  } else {
+    updateBackendIndicator();
   }
 }
 
+function updateBackendIndicator() {
+  const el = document.getElementById('backendIndicator');
+  if (!el) return;
+  const colors = {
+    [BACKEND_API]:    { dot: '#2a8a2a', text: 'SHARED · Pi' },
+    [BACKEND_LOCAL]:  { dot: '#c8341a', text: 'LOCAL · this browser only' },
+    [BACKEND_CLAUDE]: { dot: '#1a4d8f', text: 'CLAUDE ENV' },
+    [BACKEND_MEMORY]: { dot: '#888',    text: 'MEMORY ONLY (no save)' },
+  };
+  const c = colors[_backendType] || colors[BACKEND_MEMORY];
+  el.innerHTML = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c.dot};margin-right:6px;vertical-align:middle;"></span>${c.text}`;
+}
+
+/* ---- SYNC POLLING (API backend only) ----
+   When another device adds labels, this device should pick up the changes.
+   Poll the registry every 5 seconds; if it changed, reload and re-render. */
 let _syncTimer = null;
 let _lastRegistryHash = '';
 function startSyncPolling() {
@@ -937,12 +1033,14 @@ function startSyncPolling() {
       const j = await r.json();
       if (j.hash && j.hash !== _lastRegistryHash) {
         _lastRegistryHash = j.hash;
+        // Pull fresh data
         const reg = await _storage.get(KEY_REG);
         const used = await _storage.get(KEY_USED);
         if (reg && reg.value) state.registry = JSON.parse(reg.value);
         if (used && used.value) state.used = new Set(JSON.parse(used.value));
+        updateMeta();
       }
-    } catch (e) {}
+    } catch (e) { /* network blip, try again next interval */ }
   }, 5000);
 }
 
@@ -968,6 +1066,9 @@ async function persistConfig() {
       gapH: el('gapH').value,
       gapV: el('gapV').value,
       cutMarks: el('cutMarks').checked,
+      // Slice 1: tape output config
+      tapeWidthMm: state.tapeWidthMm,
+      tapeColor: state.tapeColor,
     }));
   } catch(e){}
 }
@@ -992,6 +1093,9 @@ async function loadAll() {
       if (cfg.presetId) state.presetId = cfg.presetId;
       if (cfg.customW != null) state.customW = cfg.customW;
       if (cfg.customH != null) state.customH = cfg.customH;
+      // Slice 1: tape output config — load before DOM is ready, applied in setTimeout below
+      if (cfg.tapeWidthMm) state.tapeWidthMm = cfg.tapeWidthMm;
+      if (cfg.tapeColor) state.tapeColor = cfg.tapeColor;
       setTimeout(() => {
         if (cfg.qrMode) el('qrMode').value = cfg.qrMode;
         if (cfg.urlPrefix) el('urlPrefix').value = cfg.urlPrefix;
@@ -1000,6 +1104,9 @@ async function loadAll() {
         if (cfg.gapH) el('gapH').value = cfg.gapH;
         if (cfg.gapV) el('gapV').value = cfg.gapV;
         if (cfg.cutMarks != null) el('cutMarks').checked = cfg.cutMarks;
+        // Slice 1: tape dropdowns
+        const tw = el('tapeWidthSel'); if (tw && cfg.tapeWidthMm) tw.value = cfg.tapeWidthMm;
+        const tc = el('tapeColorSel'); if (tc && cfg.tapeColor) tc.value = cfg.tapeColor;
         toggleUrlField();
         renderAll();
       }, 0);
@@ -1021,6 +1128,7 @@ function getActiveDims() {
   return { w, h, preset };
 }
 function getRowDims(row) {
+  // each row may override the format
   if (row.formatId === 'custom') {
     return getActiveDims();
   }
@@ -1052,7 +1160,8 @@ function buildQrPayload(row) {
   return id;
 }
 
-function generateQRDataUrl(text, sizePx) {
+function generateQRDataUrl(text, sizePx, colorDark = '#000000', colorLight = '#ffffff') {
+  // Use qrcodejs into a hidden div, then snap the canvas/img.
   const tmp = document.createElement('div');
   tmp.style.position = 'absolute'; tmp.style.left = '-99999px';
   document.body.appendChild(tmp);
@@ -1062,8 +1171,8 @@ function generateQRDataUrl(text, sizePx) {
       width: sizePx,
       height: sizePx,
       correctLevel: QRCode.CorrectLevel.M,
-      colorDark: '#000000',
-      colorLight: '#ffffff',
+      colorDark: colorDark,
+      colorLight: colorLight,
     });
     const cv = tmp.querySelector('canvas');
     const img = tmp.querySelector('img');
@@ -1080,7 +1189,7 @@ function generateQRDataUrl(text, sizePx) {
 const MM_TO_PX = 96 / 25.4;
 
 function buildLabelCard(row, opts = {}) {
-  const { withShadow = false } = opts;
+  const { withShadow = false, tapeColor = null } = opts;
   const dims = getRowDims(row);
   const wPx = dims.w * MM_TO_PX;
   const hPx = dims.h * MM_TO_PX;
@@ -1090,28 +1199,47 @@ function buildLabelCard(row, opts = {}) {
   card.style.width = wPx + 'px';
   card.style.height = hPx + 'px';
   card.style.position = 'relative';
+  // Slice 1: optional tape-color tint for preview (printer prints whatever is loaded)
+  if (tapeColor && TAPE_COLORS[tapeColor]) {
+    card.style.background = TAPE_COLORS[tapeColor].tape;
+  }
 
+  // ---- GEOMETRY (matches tape printer printable area) ----
+  // The printer's actual printable area for 12mm tape is ~9.88mm tall
+  // (70 pixels at 180 DPI). The other ~2.12mm of the 12mm tape is dead
+  // zone the print head physically cannot reach.
+  // We make the QR fit within that printable height, NOT the full tape.
+  //
+  // Horizontal: 3mm cut-clearance on each side (cutter needs clear tape)
+  // Gap between text and QR: 0.8mm
+  // Printable heights per tape width (mm of printable / total mm):
   const PRINTABLE_HEIGHT_MM_TABLE = {
     6: 4.5, 9: 7.05, 12: 9.88, 18: 15.8, 24: 18.05
   };
-  const MARGIN_H_MM = 4.0;
+  const MARGIN_H_MM = 4.0;   // left/right (cut clearance — matches TAPE_CUT_CLEAR_MM)
   const GAP_MM = 0.8;
   const marginHpx = MARGIN_H_MM * MM_TO_PX;
   const gapPx = GAP_MM * MM_TO_PX;
 
+  // Figure out the printable height for this label's tape size (default
+  // to 12mm if not in table). The QR fits within this printable height,
+  // not the full physical label height.
   const printableHeightMm = PRINTABLE_HEIGHT_MM_TABLE[dims.h] || (dims.h * 0.82);
   const printableHeightPx = printableHeightMm * MM_TO_PX;
+  // Vertical inset = half the unprintable area on top + bottom
   const marginVpx = (hPx - printableHeightPx) / 2;
 
   const qrSidePx = row.qr ? (hPx - 2 * marginVpx) : 0;
   const qrLeftPx = row.qr ? (wPx - marginHpx - qrSidePx) : 0;
 
+  // Text box geometry
   const textLeft = marginHpx;
   const textTop = marginVpx;
   const textHeight = hPx - 2 * marginVpx;
   const textRight = row.qr ? (qrLeftPx - gapPx) : (wPx - marginHpx);
   const textWidth = textRight - textLeft;
 
+  // ---- TEXT BLOCK ----
   const tb = document.createElement('div');
   tb.className = 'text-block';
   tb.style.position = 'absolute';
@@ -1130,6 +1258,7 @@ function buildLabelCard(row, opts = {}) {
     lines.push({ text: row.id || '?????', cls: 'primary', weight: 1.0 });
   }
 
+  // ---- QR BLOCK ----
   if (row.qr) {
     const qb = document.createElement('div');
     qb.className = 'qr-block';
@@ -1139,7 +1268,11 @@ function buildLabelCard(row, opts = {}) {
     qb.style.width = qrSidePx + 'px';
     qb.style.height = qrSidePx + 'px';
     const payload = buildQrPayload(row);
-    const url = generateQRDataUrl(payload, Math.max(80, Math.round(qrSidePx * 4)));
+    // Slice 1: when tinting for tape preview, use ink/tape colors for the QR too
+    const inkColor = (tapeColor && TAPE_COLORS[tapeColor]) ? TAPE_COLORS[tapeColor].ink : '#000000';
+    const tapeBg   = (tapeColor && TAPE_COLORS[tapeColor]) ? TAPE_COLORS[tapeColor].tape : '#ffffff';
+    if (tapeColor) qb.style.background = tapeBg;
+    const url = generateQRDataUrl(payload, Math.max(80, Math.round(qrSidePx * 4)), inkColor, tapeBg);
     if (url) {
       const img = document.createElement('img');
       img.src = url;
@@ -1148,10 +1281,15 @@ function buildLabelCard(row, opts = {}) {
     card.appendChild(qb);
   }
 
+  // Build line elements
   const lineEls = lines.map(l => {
     const d = document.createElement('div');
     d.className = 'line ' + l.cls;
     d.textContent = l.text;
+    // Slice 1: ink color override for tape preview tinting
+    if (tapeColor && TAPE_COLORS[tapeColor]) {
+      d.style.color = TAPE_COLORS[tapeColor].ink;
+    }
     tb.appendChild(d);
     return { el: d, weight: l.weight };
   });
@@ -1163,25 +1301,41 @@ function buildLabelCard(row, opts = {}) {
   return card;
 }
 
+/* ---- TEXT AUTOFIT ----
+   Uses an offscreen measurement element (not inside flex) for reliable
+   scrollWidth/offsetHeight. Per line: binary search the largest font-size
+   where rendered text fits within (lineWidth × lineHeight). */
 function fitTextLines(textBlock, lineEls, boxW, boxH) {
   if (!lineEls.length || boxW <= 0 || boxH <= 0) return;
+
+  // Center text in the text box
   textBlock.style.display = 'flex';
   textBlock.style.flexDirection = 'column';
   textBlock.style.justifyContent = 'center';
   textBlock.style.alignItems = 'center';
 
   const totalWeight = lineEls.reduce((s, l) => s + l.weight, 0);
+
+  // Create an offscreen measurement node — guarantees clean scrollWidth.
   const measurer = document.createElement('span');
   measurer.style.cssText = [
-    'position: absolute', 'left: -99999px', 'top: -99999px',
-    'visibility: hidden', 'white-space: nowrap', 'line-height: 1',
-    'padding: 0', 'margin: 0', 'border: 0',
+    'position: absolute',
+    'left: -99999px',
+    'top: -99999px',
+    'visibility: hidden',
+    'white-space: nowrap',
+    'line-height: 1',
+    'padding: 0',
+    'margin: 0',
+    'border: 0',
   ].join(';');
   document.body.appendChild(measurer);
 
   try {
     for (const le of lineEls) {
       const lineH = (le.weight / totalWeight) * boxH;
+
+      // Copy the element's computed font properties to the measurer
       const cs = window.getComputedStyle(le.el);
       measurer.style.fontFamily = cs.fontFamily;
       measurer.style.fontWeight = cs.fontWeight;
@@ -1190,15 +1344,23 @@ function fitTextLines(textBlock, lineEls, boxW, boxH) {
       measurer.style.textTransform = cs.textTransform;
       measurer.textContent = le.el.textContent;
 
+      // Binary search for largest font-size where text fits in lineH height
+      // AND boxW width.
       let lo = 2, hi = boxH * 2, best = lo;
       for (let i = 0; i < 28; i++) {
         const mid = (lo + hi) / 2;
         measurer.style.fontSize = mid + 'px';
         const w = measurer.offsetWidth;
         const h = measurer.offsetHeight;
-        if (w <= boxW && h <= lineH) { best = mid; lo = mid; }
-        else { hi = mid; }
+        if (w <= boxW && h <= lineH) {
+          best = mid;
+          lo = mid;
+        } else {
+          hi = mid;
+        }
       }
+
+      // Apply the result to the actual element
       le.el.style.lineHeight = '1';
       le.el.style.padding = '0';
       le.el.style.margin = '0';
@@ -1216,7 +1378,7 @@ function renderPresets() {
   PRESETS.forEach(p => {
     const b = document.createElement('button');
     b.className = 'preset' + (p.id === state.presetId ? ' active' : '');
-    b.innerHTML = `<div class="name">${p.name}</div><div class="dim">${p.w} x ${p.h} mm &middot; ${p.desc}</div>`;
+    b.innerHTML = `<div class="name">${p.name}</div><div class="dim">${p.w} × ${p.h} mm · ${p.desc}</div>`;
     b.addEventListener('click', () => {
       state.presetId = p.id;
       el('customW').value = '';
@@ -1229,7 +1391,7 @@ function renderPresets() {
     grid.appendChild(b);
   });
   const dims = getActiveDims();
-  el('previewInfo').textContent = `${dims.w} x ${dims.h} mm`;
+  el('previewInfo').textContent = `${dims.w} × ${dims.h} mm · default format`;
 }
 
 /* ---- TABLE RENDERING ---- */
@@ -1238,13 +1400,14 @@ function renderTable() {
   tb.innerHTML = '';
   if (state.rows.length === 0) {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td colspan="9"><div class="table-empty">No labels yet. Click <b>+ Add label</b> to begin.</div></td>`;
+    tr.innerHTML = `<td colspan="9"><div class="table-empty">No rows. Click <b>+ Add Row</b> to begin.</div></td>`;
     tb.appendChild(tr);
     return;
   }
-  state.rows.forEach((row) => {
+  state.rows.forEach((row, idx) => {
     const tr = document.createElement('tr');
     tr.dataset.uid = row.uid;
+    // Format options
     const fmtOptions = PRESETS.map(p =>
       `<option value="${p.id}" ${row.formatId === p.id ? 'selected' : ''}>${p.name}</option>`
     ).join('') + `<option value="custom" ${row.formatId === 'custom' ? 'selected' : ''}>Default</option>`;
@@ -1252,25 +1415,27 @@ function renderTable() {
     tr.innerHTML = `
       <td><input type="checkbox" class="row-sel" ${row.selected ? 'checked' : ''} /></td>
       <td class="id-cell">${row.id || '...'}</td>
-      <td><textarea class="line1" rows="1" placeholder="What's in this bin">${escapeHtml(row.line1 || '')}</textarea></td>
-      <td><textarea class="line2" rows="1" placeholder="(optional)">${escapeHtml(row.line2 || '')}</textarea></td>
-      <td><input class="line3" type="text" placeholder="(optional)" value="${escapeAttr(row.line3 || '')}" /></td>
+      <td><textarea class="line1" rows="1" placeholder="Primary text">${escapeHtml(row.line1 || '')}</textarea></td>
+      <td><textarea class="line2" rows="1" placeholder="Secondary">${escapeHtml(row.line2 || '')}</textarea></td>
+      <td><input class="line3" type="text" placeholder="Tertiary / spec" value="${escapeAttr(row.line3 || '')}" /></td>
       <td class="qr-toggle"><input type="checkbox" class="qr-chk" ${row.qr ? 'checked' : ''} /></td>
       <td class="copies"><input type="number" class="copies-in" min="1" max="200" value="${row.copies || 1}" /></td>
       <td class="fmt-cell"><select class="fmt-sel">${fmtOptions}</select></td>
       <td class="actions">
-        <button class="print-tape-btn" title="Print to tape">&#9000;</button>
-        <button class="dup-btn" title="Duplicate">&#10063;</button>
-        <button class="del-btn" title="Delete">&times;</button>
+        <button class="print-tape-btn" title="Print to tape">⎙</button>
+        <button class="dup-btn" title="Duplicate">⎘</button>
+        <button class="del-btn" title="Delete">✕</button>
       </td>
     `;
     tb.appendChild(tr);
 
+    // Wire up
     tr.querySelector('.row-sel').addEventListener('change', e => {
       row.selected = e.target.checked;
     });
     const onTextChange = (field) => (e) => {
       row[field] = e.target.value;
+      // ID-cell may need refresh of QR payload if "combined"
       persistRows();
       schedulePreview();
     };
@@ -1298,6 +1463,7 @@ function renderTable() {
     tr.querySelector('.del-btn').addEventListener('click', () => deleteRow(row.uid));
     tr.querySelector('.print-tape-btn').addEventListener('click', () => printRowToTape(row.uid));
 
+    // Auto-grow textarea on input (capped)
     tr.querySelectorAll('textarea').forEach(ta => {
       const grow = () => {
         ta.style.height = 'auto';
@@ -1333,6 +1499,7 @@ async function addRow(opts = {}) {
   logRow(row);
   await persistRows();
   renderAll();
+  // Focus line1 of the new row
   setTimeout(() => {
     const tr = document.querySelector(`tr[data-uid="${row.uid}"]`);
     if (tr) {
@@ -1374,6 +1541,7 @@ let previewTimer = null;
 function schedulePreview() {
   if (previewTimer) clearTimeout(previewTimer);
   previewTimer = setTimeout(() => {
+    // also update registry payload (covers text changes for combined/json modes)
     state.rows.forEach(logRow);
     renderPreview();
     updateMeta();
@@ -1384,7 +1552,7 @@ function renderPreview() {
   const body = el('previewBody');
   body.innerHTML = '';
   if (state.rows.length === 0) {
-    body.innerHTML = `<div class="single-stage"><div style="color: var(--muted); font-size: 12px; text-align: center; padding: 40px;">Add a label to see a preview.</div></div>`;
+    body.innerHTML = `<div class="single-stage"><div style="color: var(--muted); font-size: 12px; text-align: center; padding: 40px;">Add a row to see a preview.</div></div>`;
     return;
   }
   if (state.previewTab === 'single') {
@@ -1398,41 +1566,55 @@ function renderSinglePreview(body) {
   const stage = document.createElement('div');
   stage.className = 'single-stage';
   body.appendChild(stage);
+  // Show first 6 distinct rows (preview only)
   state.rows.slice(0, 6).forEach(row => {
     const frame = document.createElement('div');
     frame.className = 'single-frame';
-    const card = buildLabelCard(row, { withShadow: true });
+    const card = buildLabelCard(row, { withShadow: true, tapeColor: state.tapeColor });
     frame.appendChild(card);
     const dims = getRowDims(row);
     const cap = document.createElement('div');
     cap.className = 'caption';
-    cap.textContent = `${row.id} &middot; ${dims.w}x${dims.h}mm &middot; x${row.copies}`;
-    cap.innerHTML = `${row.id} &middot; ${dims.w}x${dims.h}mm &middot; &times;${row.copies}`;
+    cap.textContent = `${row.id} · ${dims.w}×${dims.h}mm · ×${row.copies}`;
     frame.appendChild(cap);
     stage.appendChild(frame);
+    // fit text after attached
     requestAnimationFrame(() => card._fit && card._fit());
   });
   if (state.rows.length > 6) {
     const more = document.createElement('div');
     more.style.cssText = 'width:100%;text-align:center;color:var(--muted);font-size:11px;font-family:Archivo;text-transform:uppercase;letter-spacing:0.1em;margin-top:8px;';
-    more.textContent = `+ ${state.rows.length - 6} more · switch to Sheet view`;
+    more.textContent = `+ ${state.rows.length - 6} more rows · switch to Sheet view`;
     body.appendChild(more);
   }
 }
 
+/* ---- SHEET LAYOUT ----
+   Tile every label×copies onto pages, packing greedily by row.
+   Mixed sizes are supported: each label takes its own w×h. */
 function paginate(pageW_mm, pageH_mm, marginMm, gapH, gapV, items) {
   const innerW = pageW_mm - 2 * marginMm;
   const innerH = pageH_mm - 2 * marginMm;
   const pages = [];
   let curPage = [];
   let cursorX = 0, cursorY = 0, rowH = 0;
+  // Each item has w, h in mm
   for (const it of items) {
-    if (it.w > innerW || it.h > innerH) { it.skipped = true; continue; }
-    if (cursorX + it.w > innerW + 0.001) {
-      cursorX = 0; cursorY += rowH + gapV; rowH = 0;
+    if (it.w > innerW || it.h > innerH) {
+      // Won't fit at all; skip with marker
+      it.skipped = true;
+      continue;
     }
+    // If overflows current row width, wrap
+    if (cursorX + it.w > innerW + 0.001) {
+      cursorX = 0;
+      cursorY += rowH + gapV;
+      rowH = 0;
+    }
+    // If overflows page height, new page
     if (cursorY + it.h > innerH + 0.001) {
-      pages.push(curPage); curPage = [];
+      pages.push(curPage);
+      curPage = [];
       cursorX = 0; cursorY = 0; rowH = 0;
     }
     curPage.push({ ...it, x: cursorX, y: cursorY });
@@ -1444,11 +1626,14 @@ function paginate(pageW_mm, pageH_mm, marginMm, gapH, gapV, items) {
 }
 
 function expandQueue() {
+  // Flatten rows into individual labels per copy
   const items = [];
   for (const row of state.rows) {
     const dims = getRowDims(row);
     const n = Math.max(1, row.copies || 1);
-    for (let i = 0; i < n; i++) items.push({ row, w: dims.w, h: dims.h });
+    for (let i = 0; i < n; i++) {
+      items.push({ row, w: dims.w, h: dims.h });
+    }
   }
   return items;
 }
@@ -1477,9 +1662,11 @@ function renderSheetPreview(body) {
   pages.forEach((page, pgIdx) => {
     const sheet = document.createElement('div');
     sheet.className = 'sheet ' + (isA4 ? 'sheet-a4' : 'sheet-letter');
+    // For preview, scale down via transform
     const scale = isA4 ? Math.min(1, 700 / (210 * MM_TO_PX)) : Math.min(1, 700 / (215.9 * MM_TO_PX));
     sheet.style.transform = `scale(${scale})`;
     sheet.style.transformOrigin = 'top left';
+    // wrap to allocate space
     const wrap = document.createElement('div');
     wrap.style.width = (isA4 ? 210 : 215.9) * MM_TO_PX * scale + 'px';
     wrap.style.height = (isA4 ? 297 : 279.4) * MM_TO_PX * scale + 'px';
@@ -1515,8 +1702,11 @@ function renderSheetPreview(body) {
 
 /* ---- META / CAPACITY ---- */
 function updateMeta() {
+  el('usedCount').textContent = state.used.size;
+  const totalLabels = state.rows.reduce((s, r) => s + Math.max(1, r.copies || 1), 0);
+  el('queueCount').textContent = totalLabels;
   const dims = getActiveDims();
-  el('previewInfo').textContent = `${dims.w} x ${dims.h} mm`;
+  el('previewInfo').textContent = `${dims.w} × ${dims.h} mm · default format`;
   updateCapacityHint();
 }
 
@@ -1534,15 +1724,10 @@ function updateCapacityHint() {
   const rows = Math.max(0, Math.floor((innerH + gapV) / (dims.h + gapV)));
   const items = expandQueue();
   const pages = paginate(pageW, pageH, margin, gapH, gapV, items);
-  el('capacityHint').innerHTML = `~<b>${cols * rows}</b> labels per page (${cols}x${rows}) &middot; ${items.length} queued &rarr; <b>${pages.length}</b> page${pages.length === 1 ? '' : 's'}`;
+  el('capacityHint').innerHTML = `≈ <b>${cols * rows}</b> default labels per page (${cols}×${rows}) · ${items.length} queued → <b>${pages.length}</b> page${pages.length === 1 ? '' : 's'}`;
 }
 
-/* ---- BACKUP / RESTORE / CSV ----
-   Pass A: friendly wrappers around existing JSON export/import.
-   Pass B will add a real zip-backup endpoint on the backend.
-   For now, "Backup my inventory" produces a JSON file (same as before, just
-   renamed) and "Restore" accepts JSON or zip (zip support hits an endpoint
-   that may not exist yet -- falls back to JSON-only if so). */
+/* ---- IMPORT / EXPORT ---- */
 function buildExport() {
   return {
     schema: SCHEMA_VERSION,
@@ -1553,26 +1738,10 @@ function buildExport() {
   };
 }
 
-async function doBackup() {
-  // Try server-side zip backup first. If the endpoint doesn't exist yet
-  // (Pass B will add it), fall back to local JSON file.
-  try {
-    const r = await fetch('/api/backup', { cache: 'no-store' });
-    if (r.ok) {
-      const blob = await r.blob();
-      const cd = r.headers.get('Content-Disposition') || '';
-      let name = `gridfinity-backup-${tsForFilename()}.zip`;
-      const m = cd.match(/filename="?([^";]+)"?/);
-      if (m) name = m[1];
-      downloadBlob(blob, name);
-      return;
-    }
-  } catch (e) { /* fall through to JSON fallback */ }
-
-  // Fallback: classic JSON export (Pre-Pass-B servers)
+function exportJson() {
   const data = buildExport();
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  downloadBlob(blob, `gridfinity-backup-${tsForFilename()}.json`);
+  downloadBlob(blob, `gridfinity-inventory-${tsForFilename()}.json`);
 }
 
 function exportCsv() {
@@ -1591,7 +1760,7 @@ function exportCsv() {
   ].map(csvCell).join(','));
   const csv = [header.join(','), ...rows].join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
-  downloadBlob(blob, `gridfinity-labels-${tsForFilename()}.csv`);
+  downloadBlob(blob, `gridfinity-inventory-${tsForFilename()}.csv`);
 }
 
 function csvCell(v) {
@@ -1610,111 +1779,25 @@ function downloadBlob(blob, name) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/* ---- CSV IMPORT ----
-   Accepts a CSV with at minimum a "name" or "line1" column. Creates a new
-   label row for each data row. Supports columns: line1, line2, line3,
-   copies, qr (0/1). Headers are case-insensitive. */
-async function importCsvLabels(file) {
-  let text;
-  try { text = await file.text(); }
-  catch (e) { alert('Could not read file: ' + e.message); return; }
-
-  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-  if (lines.length < 2) { alert('CSV file looks empty.'); return; }
-
-  // Parse header
-  const header = parseCsvRow(lines[0]).map(h => h.trim().toLowerCase());
-  const col = (name) => header.indexOf(name);
-
-  // Try multiple aliases for the primary text column
-  let line1Idx = col('line1');
-  if (line1Idx < 0) line1Idx = col('name');
-  if (line1Idx < 0) line1Idx = col('item');
-  if (line1Idx < 0) line1Idx = col('label');
-  if (line1Idx < 0) line1Idx = 0;  // default to first column
-
-  const line2Idx = col('line2');
-  const line3Idx = col('line3');
-  const copiesIdx = col('copies');
-  const qrIdx = col('qr');
-
-  let added = 0, skipped = 0;
-  for (let i = 1; i < lines.length; i++) {
-    const cells = parseCsvRow(lines[i]);
-    if (!cells.length) continue;
-    const line1 = (cells[line1Idx] || '').trim();
-    if (!line1) { skipped++; continue; }
-    const opts = {
-      line1: line1,
-      line2: line2Idx >= 0 ? (cells[line2Idx] || '').trim() : '',
-      line3: line3Idx >= 0 ? (cells[line3Idx] || '').trim() : '',
-      copies: copiesIdx >= 0 ? Math.max(1, parseInt(cells[copiesIdx]) || 1) : 1,
-      qr: qrIdx >= 0 ? (cells[qrIdx] === '1' || cells[qrIdx].toLowerCase() === 'true') : true,
-    };
-    await addRow(opts);
-    added++;
-  }
-  alert(`Imported ${added} label${added === 1 ? '' : 's'} from CSV.${skipped ? `\nSkipped ${skipped} empty row${skipped === 1 ? '' : 's'}.` : ''}`);
-}
-
-function parseCsvRow(line) {
-  // Simple RFC4180-ish parser: quoted fields, escaped quotes, commas.
-  const out = [];
-  let i = 0, cur = '', inQ = false;
-  while (i < line.length) {
-    const c = line[i];
-    if (inQ) {
-      if (c === '"' && line[i+1] === '"') { cur += '"'; i += 2; continue; }
-      if (c === '"') { inQ = false; i++; continue; }
-      cur += c; i++;
-    } else {
-      if (c === '"') { inQ = true; i++; continue; }
-      if (c === ',') { out.push(cur); cur = ''; i++; continue; }
-      cur += c; i++;
-    }
-  }
-  out.push(cur);
-  return out;
-}
-
-/* ---- RESTORE (JSON or zip) ---- */
-async function doRestore(file) {
-  const name = (file.name || '').toLowerCase();
-  if (name.endsWith('.zip')) {
-    // Try to POST to a server endpoint that knows how to unpack the zip
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      const r = await fetch('/api/restore', { method: 'POST', body: fd });
-      if (r.ok) {
-        alert('Backup restored. Refreshing...');
-        location.reload();
-        return;
-      }
-      const t = await r.text();
-      alert(`Server could not restore the zip backup.\n\n${t}\n\nIf this server is on an older version, try restoring with a .json backup file instead.`);
-      return;
-    } catch (e) {
-      alert(`Could not upload to server: ${e.message}\n\nIf this server is older, try restoring with a .json backup file instead.`);
-      return;
-    }
-  }
-  // JSON restore (legacy import path)
+async function importJson(file) {
   try {
     const text = await file.text();
     const data = JSON.parse(text);
     if (!data.schema || !data.schema.startsWith('gridfinity-inventory/')) {
-      alert('That does not look like a Gridfinity backup file.');
+      alert('Not a gridfinity-inventory file. Schema missing.');
       return;
     }
     if (!Array.isArray(data.items)) {
-      alert('Backup file has no items.');
+      alert('No items[] array found.');
       return;
     }
     let added = 0, skipped = 0;
     for (const it of data.items) {
       if (!it.id) continue;
-      if (state.registry[it.id]) { skipped++; continue; }
+      if (state.registry[it.id]) {
+        skipped++;
+        continue;
+      }
       state.registry[it.id] = {
         id: it.id,
         lines: it.lines || [],
@@ -1729,10 +1812,10 @@ async function doRestore(file) {
     }
     await persistUsed();
     await persistRegistry();
-    alert(`Restored ${added} label${added === 1 ? '' : 's'} from backup.${skipped ? `\nSkipped ${skipped} (already exist).` : ''}`);
+    alert(`Import complete.\nAdded: ${added}\nSkipped (already exist): ${skipped}\n\nIDs are reserved against re-issue. Use "Reset Everything" to start over.`);
     updateMeta();
   } catch (e) {
-    alert('Could not restore: ' + e.message);
+    alert('Import failed: ' + e.message);
   }
 }
 
@@ -1757,6 +1840,24 @@ function setupListeners() {
     state.customH = parseFloat(el('customH').value) || null;
     persistConfig(); schedulePreview(); updateMeta();
   });
+  // Slice 1: tape width + color
+  const tw = el('tapeWidthSel');
+  if (tw) {
+    tw.addEventListener('change', () => {
+      state.tapeWidthMm = tw.value; // 'auto' or numeric string
+      persistConfig();
+      schedulePreview();
+      updateTapeStatusHint();
+    });
+  }
+  const tc = el('tapeColorSel');
+  if (tc) {
+    tc.addEventListener('change', () => {
+      state.tapeColor = tc.value;
+      persistConfig();
+      schedulePreview();
+    });
+  }
   el('qrMode').addEventListener('change', () => {
     toggleUrlField();
     state.rows.forEach(logRow);
@@ -1775,41 +1876,25 @@ function setupListeners() {
   el('cutMarks').addEventListener('change', () => { persistConfig(); schedulePreview(); });
 
   el('addRowBtn').addEventListener('click', () => addRow());
-
-  // KEBAB MENU (hidden power features)
-  const moreBtn = el('moreMenuBtn');
-  const moreDropdown = el('moreMenuDropdown');
-  moreBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    moreDropdown.classList.toggle('open');
-  });
-  document.addEventListener('click', (e) => {
-    if (!moreDropdown.contains(e.target) && e.target !== moreBtn) {
-      moreDropdown.classList.remove('open');
-    }
-  });
-  const closeMenu = () => moreDropdown.classList.remove('open');
-
   el('addBlankRowsBtn').addEventListener('click', async () => {
-    closeMenu();
     for (let i = 0; i < 5; i++) await addRow();
   });
   el('dupSelectedBtn').addEventListener('click', async () => {
-    closeMenu();
     const sel = state.rows.filter(r => r.selected).map(r => r.uid);
-    for (const u of sel) await duplicateRow(u);
+    for (const uid of sel) await duplicateRow(uid);
   });
   el('delSelectedBtn').addEventListener('click', () => {
-    closeMenu();
-    const count = state.rows.filter(r => r.selected).length;
-    if (count === 0) { alert('No labels selected.'); return; }
-    if (!confirm(`Delete ${count} selected label${count === 1 ? '' : 's'}?`)) return;
+    if (!confirm('Delete selected rows? IDs will remain reserved (not reusable).')) return;
     state.rows = state.rows.filter(r => !r.selected);
     persistRows(); renderAll();
   });
+  el('selectAll').addEventListener('change', e => {
+    state.rows.forEach(r => r.selected = e.target.checked);
+    renderTable();
+  });
+  el('printBatchBtn').addEventListener('click', printBatchToTape);
   el('reissueBtn').addEventListener('click', async () => {
-    closeMenu();
-    if (!confirm('Generate new IDs for every label in the table?\n\nThe old IDs stay reserved (will never be reused).')) return;
+    if (!confirm('Reissue new IDs for all rows? Old IDs stay reserved (never reused).')) return;
     for (const row of state.rows) {
       row.id = await issueId();
       row.created = new Date().toISOString();
@@ -1819,36 +1904,23 @@ function setupListeners() {
     renderAll();
   });
   el('clearTableBtn').addEventListener('click', () => {
-    closeMenu();
-    if (!confirm('Clear all labels from the table?\n\nThe IDs stay reserved (will not be reused).')) return;
+    if (!confirm('Clear all table rows? IDs stay in registry & remain reserved.')) return;
     state.rows = [];
     persistRows(); renderAll();
   });
 
-  el('selectAll').addEventListener('change', e => {
-    state.rows.forEach(r => r.selected = e.target.checked);
-    renderTable();
-  });
-  el('printBatchBtn').addEventListener('click', printBatchToTape);
-
   el('printBtn').addEventListener('click', doPrint);
 
-  // BACKUP / RESTORE / CSV
-  el('backupBtn').addEventListener('click', doBackup);
-  el('restoreBtn').addEventListener('click', () => el('importFile').click());
+  el('exportJsonBtn').addEventListener('click', exportJson);
+  el('exportCsvBtn').addEventListener('click', exportCsv);
+  el('importBtn').addEventListener('click', () => el('importFile').click());
   el('importFile').addEventListener('change', e => {
-    if (e.target.files && e.target.files[0]) doRestore(e.target.files[0]);
+    if (e.target.files && e.target.files[0]) importJson(e.target.files[0]);
     e.target.value = '';
   });
-  el('csvImportBtn').addEventListener('click', () => el('csvImportFile').click());
-  el('csvImportFile').addEventListener('change', e => {
-    if (e.target.files && e.target.files[0]) importCsvLabels(e.target.files[0]);
-    e.target.value = '';
-  });
-  el('csvExportBtn').addEventListener('click', exportCsv);
   el('resetBtn').addEventListener('click', async () => {
-    if (!confirm('This will erase ALL labels and inventory data.\n\nContinue?')) return;
-    if (!confirm('Really erase everything? This cannot be undone.')) return;
+    if (!confirm('Reset EVERYTHING — all rows, all issued IDs, all registry data. Continue?')) return;
+    if (!confirm('Really? Issued IDs will be available for reuse. This cannot be undone.')) return;
     state.rows = []; state.used = new Set(); state.registry = {};
     await persistUsed(); await persistRegistry(); await persistRows();
     renderAll();
@@ -1865,22 +1937,90 @@ function setupListeners() {
   });
 }
 
-/* ---- TAPE PRINTING (Brother PT-P700 via Pi backend) ---- */
+/* ---- TAPE PRINTING (Brother PT-P700 via Pi backend) ----
+
+   PIXEL GEOMETRY (PT-P700 @ 180 DPI):
+     12mm tape → tape physical height = 85px (12mm × 180/25.4)
+                 printable area height = 70px (reported by ptouch-print --info)
+                 → ~7.5px (1mm) safety dead zone on top and bottom edges
+     18mm tape → printable = 112px
+     24mm tape → printable = 128px
+
+   For chain-mode printing (multiple labels in one job, auto-cut between
+   them), the cutter needs ~3mm of clear tape on each side of every cut.
+   We respect that by inset cut-clearance on the left and right of each
+   label's content area.
+
+   The tape canvas dimensions ARE the printable area (the printer adds the
+   12-25mm front leader automatically). What we render is what hits paper.
+*/
+
 const TAPE_DPI = 180;
-const TAPE_HEIGHTS_PX = {
+const TAPE_HEIGHTS_PX = {  // printable area height in pixels for each tape width
   6: 32, 9: 50, 12: 70, 18: 112, 24: 128
 };
+// Safe inset (in mm) we leave on each end of the printable length so the
+// cutter has clear room. Brother's small-margin spec is 4mm minimum.
+// This applies to both single and batch (chain+precut) printing.
 const TAPE_CUT_CLEAR_MM = 4.0;
+// Vertical inset (in mm) inside the printable area. ptouch-print already
+// reports just the printable area, so 0.3mm is plenty of safety to keep
+// content away from any roller/cutter edge mishaps.
 const TAPE_EDGE_SAFE_MM = 0.3;
 
 function mmToTapePx(mm) {
   return Math.round(mm * TAPE_DPI / 25.4);
 }
 
+/* ---- TAPE WIDTH RESOLUTION (Slice 1) ----
+   The effective tape width to render at depends on three things, in priority:
+     1. User's explicit choice in the Tape Output dropdown ('6'..'24')
+     2. The printer's reported cartridge width (status.tape_width_mm)
+     3. Fallback: 12mm (the most common cartridge)
+   When the user picks 'auto', we use #2 if available, else #3. */
+function resolveTapeWidth(printerStatus) {
+  if (state.tapeWidthMm && state.tapeWidthMm !== 'auto') {
+    const n = parseInt(state.tapeWidthMm, 10);
+    if (!isNaN(n) && TAPE_HEIGHTS_PX[n]) return n;
+  }
+  if (printerStatus && printerStatus.tape_width_mm) return printerStatus.tape_width_mm;
+  return 12;
+}
+
+/* When a user picks a tape width that doesn't match the loaded cartridge, the
+   printer will refuse to print (ptouch-print returns an error from the head).
+   This helper returns a warning string the caller should show in the confirm
+   dialog, or null if there's no mismatch. */
+function tapeWidthMismatchWarning(effectiveWidth, printerStatus) {
+  if (!printerStatus || !printerStatus.connected) return null;
+  if (!printerStatus.tape_width_mm) return null;
+  if (printerStatus.tape_width_mm === effectiveWidth) return null;
+  return `Printer has ${printerStatus.tape_width_mm}mm cartridge loaded — print will likely fail. ` +
+         `Load ${effectiveWidth}mm tape, or change "Tape width" to Auto.`;
+}
+
+/* When using `max_print_px` from the printer, that value only applies when the
+   user is printing AT the loaded width. If the user picked a different width,
+   use the table value instead. */
+function resolveMaxPrintPx(effectiveWidth, printerStatus) {
+  if (printerStatus && printerStatus.tape_width_mm === effectiveWidth && printerStatus.max_print_px) {
+    return printerStatus.max_print_px;
+  }
+  return TAPE_HEIGHTS_PX[effectiveWidth] || null;
+}
+
 function renderRowToTapePng(row, tapeWidthMm = 12, maxPrintPx = null) {
   return new Promise((resolve, reject) => {
+    // Use the printer-reported max_print_px if we have it, otherwise fall
+    // back to a table of known values per tape width. Different printers
+    // report slightly different printable heights for the same tape width
+    // (PT-P700 says 70px for 12mm, PT-H500 says 76px).
     const tapeHeightPx = maxPrintPx || TAPE_HEIGHTS_PX[tapeWidthMm] || 70;
     const dims = getRowDims(row);
+
+    // Canvas is exactly the label's mm length at 180 DPI. The first label
+    // of a print job will get a 25mm leader auto-added by the printer;
+    // subsequent labels in a chain print only have ~4mm gap between them.
     const tapeLengthPx = mmToTapePx(dims.w);
 
     const canvas = document.createElement('canvas');
@@ -1888,13 +2028,21 @@ function renderRowToTapePng(row, tapeWidthMm = 12, maxPrintPx = null) {
     canvas.height = tapeHeightPx;
     const ctx = canvas.getContext('2d');
 
+    // White (or tape-color) background
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = '#000000';
 
+    // ---- SAFE ZONES ----
+    // Horizontal: insets on each end for cut clearance. The cutter
+    // physically needs ~3mm of clear tape to avoid clipping content.
     const cutClearPx = mmToTapePx(TAPE_CUT_CLEAR_MM);
+    // Vertical: tiny inset so we never butt content against the top/bottom
+    // of the printable area (the dead zone above/below that is the tape's
+    // unprintable margin).
     const edgeSafePx = mmToTapePx(TAPE_EDGE_SAFE_MM);
 
+    // Inner content rectangle — this is what we actually draw inside
     const contentLeft = cutClearPx;
     const contentRight = tapeLengthPx - cutClearPx;
     const contentTop = edgeSafePx;
@@ -1902,10 +2050,12 @@ function renderRowToTapePng(row, tapeWidthMm = 12, maxPrintPx = null) {
     const contentWidth = contentRight - contentLeft;
     const contentHeight = contentBottom - contentTop;
 
-    const interGapPx = mmToTapePx(0.8);
+    // ---- QR (right side, full content height, square) ----
+    const interGapPx = mmToTapePx(0.8); // 0.8mm gap between text and QR
     const qrSidePx = row.qr ? contentHeight : 0;
     const qrLeftPx = row.qr ? (contentRight - qrSidePx) : contentRight;
 
+    // ---- Text box (left side of content area, up to QR) ----
     const textLeftPx = contentLeft;
     const textRightPx = row.qr ? (qrLeftPx - interGapPx) : contentRight;
     const textWidthPx = textRightPx - textLeftPx;
@@ -1917,6 +2067,7 @@ function renderRowToTapePng(row, tapeWidthMm = 12, maxPrintPx = null) {
       return;
     }
 
+    // Build line list — match buildLabelCard behavior
     const lines = [];
     if (row.line1 && row.line1.trim()) lines.push({ text: row.line1, weight: 1.0, font: '900 Xpx Archivo', upper: true });
     if (row.line2 && row.line2.trim()) lines.push({ text: row.line2, weight: 0.62, font: '600 Xpx Archivo', upper: false });
@@ -1925,6 +2076,7 @@ function renderRowToTapePng(row, tapeWidthMm = 12, maxPrintPx = null) {
       lines.push({ text: row.id || '?????', weight: 1.0, font: '900 Xpx Archivo', upper: true });
     }
 
+    // Auto-fit each line within the text box
     const totalWeight = lines.reduce((s, l) => s + l.weight, 0);
     const fittedLines = lines.map(line => {
       const allocH = (line.weight / totalWeight) * textHeightPx;
@@ -1937,12 +2089,17 @@ function renderRowToTapePng(row, tapeWidthMm = 12, maxPrintPx = null) {
         const ascent = m.actualBoundingBoxAscent || mid * 0.8;
         const descent = m.actualBoundingBoxDescent || mid * 0.2;
         const h = ascent + descent;
-        if (m.width <= textWidthPx && h <= allocH) { best = mid; lo = mid; }
-        else { hi = mid; }
+        if (m.width <= textWidthPx && h <= allocH) {
+          best = mid;
+          lo = mid;
+        } else {
+          hi = mid;
+        }
       }
       return { text, font: line.font.replace('X', best), height: best };
     });
 
+    // Draw stacked vertically, centered in text box
     const totalDrawnH = fittedLines.reduce((s, l) => s + l.height, 0);
     let yCursor = textTopPx + (textHeightPx - totalDrawnH) / 2;
     ctx.textBaseline = 'top';
@@ -1954,6 +2111,7 @@ function renderRowToTapePng(row, tapeWidthMm = 12, maxPrintPx = null) {
     }
 
     const finalize = () => {
+      // Threshold to pure 1-bit black/white for thermal head
       const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const d = imgData.data;
       for (let i = 0; i < d.length; i += 4) {
@@ -1985,8 +2143,9 @@ function renderRowToTapePng(row, tapeWidthMm = 12, maxPrintPx = null) {
           document.body.removeChild(tmp);
           finalize();
         };
-        if (qrCanvas) drawQr(qrCanvas);
-        else if (qrImg) {
+        if (qrCanvas) {
+          drawQr(qrCanvas);
+        } else if (qrImg) {
           const img = new Image();
           img.onload = () => drawQr(img);
           img.onerror = () => { document.body.removeChild(tmp); reject(new Error('QR render failed')); };
@@ -2009,40 +2168,46 @@ async function printRowToTape(uidStr) {
   const row = state.rows.find(r => r.uid === uidStr);
   if (!row) return;
 
+  // Check printer status first
   let status;
   try {
     const r = await fetch('/api/printer/status');
     status = await r.json();
   } catch (e) {
-    alert('Could not reach the printer service. Is the backend running?');
+    alert('Cannot reach printer endpoint. Is the backend running?');
     return;
   }
 
   if (!status.connected) {
     const detail = status.error || status.raw || 'unknown';
-    alert(`Printer not connected.\n\n${detail}\n\nMake sure:\n- The printer is plugged into the Pi via USB\n- It's powered on\n- A tape cartridge is loaded\n- The P-Lite green LED is OFF (hold P-Lite for 2 sec to toggle)`);
+    alert(`Printer not connected.\n\n${detail}\n\nMake sure:\n• PT-P700 is plugged into the Pi via USB\n• Power is on\n• The PLite green LED is OFF (hold PLite for 2 sec to toggle)\n• Tape cassette is installed`);
     return;
   }
 
-  const tapeWidth = status.tape_width_mm || 12;
+  const tapeWidth = resolveTapeWidth(status);
+  const maxPrintPx = resolveMaxPrintPx(tapeWidth, status);
+  const mismatch = tapeWidthMismatchWarning(tapeWidth, status);
   const copies = Math.max(1, parseInt(row.copies || 1));
-  const confirmMsg = `Print to ${status.model || 'tape printer'}?\n` +
-                     `- Tape: ${tapeWidth}mm\n` +
-                     `- Copies: ${copies}\n` +
-                     `- Content: ${row.line1 || row.id}`;
+  const tapeSource = (state.tapeWidthMm === 'auto') ? 'from printer' : 'user choice';
+  let confirmMsg = `Print to ${status.model || 'tape printer'}?\n` +
+                   `• Tape: ${tapeWidth}mm (${tapeSource})\n` +
+                   `• Copies: ${copies}\n` +
+                   `• Content: ${row.line1 || row.id}`;
+  if (mismatch) confirmMsg += `\n\n⚠ ${mismatch}`;
   if (!confirm(confirmMsg)) return;
 
   let pngDataUrl;
   try {
-    pngDataUrl = await renderRowToTapePng(row, tapeWidth, status.max_print_px);
+    pngDataUrl = await renderRowToTapePng(row, tapeWidth, maxPrintPx);
   } catch (e) {
-    alert('Could not render label: ' + e.message);
+    alert('Failed to render label: ' + e.message);
     return;
   }
 
+  // Show a "printing..." indicator
   const btn = document.querySelector(`tr[data-uid="${uidStr}"] .print-tape-btn`);
   const originalText = btn ? btn.textContent : null;
-  if (btn) { btn.textContent = '...'; btn.disabled = true; }
+  if (btn) { btn.textContent = '⌛'; btn.disabled = true; }
 
   try {
     const resp = await fetch('/api/print', {
@@ -2057,38 +2222,137 @@ async function printRowToTape(uidStr) {
     if (!result.ok) {
       alert(`Print failed:\n${result.error || 'unknown error'}\n\n${JSON.stringify(result.detail || result.results || {}, null, 2)}`);
     } else {
-      if (btn) { btn.textContent = '\u2713'; setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 1500); }
+      if (btn) { btn.textContent = '✓'; setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 1500); }
       return;
     }
   } catch (e) {
-    alert('Network error: ' + e.message);
+    alert('Network error sending to printer: ' + e.message);
   } finally {
-    if (btn && btn.textContent === '...') {
+    if (btn && btn.textContent === '⌛') {
       btn.textContent = originalText;
       btn.disabled = false;
     }
   }
 }
 
+/* ---- BATCH TAPE PRINTING (chain mode) ----
+   Stitch multiple selected rows into a SINGLE long canvas, send as one
+   ptouch-print job. Result: one 25mm leader for the whole batch, not one
+   per label. The printer's auto-cutter still cuts between labels because
+   we feed it as one image with cut-clearance gaps between labels.
+
+   Between each label we draw a small dotted vertical line as a visual
+   scissor guide in case the auto-cut is disabled or alignment slips.
+
+   Labels of different lengths/sizes are allowed in one batch — they all
+   share the same tape width but can have different mm-lengths. */
+
+function renderBatchToTapePng(rows, tapeWidthMm = 12, maxPrintPx = null) {
+  return new Promise(async (resolve, reject) => {
+    if (!rows.length) return reject(new Error('no rows in batch'));
+
+    // Generate each label's PNG individually (data URLs)
+    const labelImages = [];
+    for (const row of rows) {
+      try {
+        const url = await renderRowToTapePng(row, tapeWidthMm, maxPrintPx);
+        labelImages.push({ row, url });
+      } catch (e) {
+        return reject(new Error(`Failed to render ${row.id}: ${e.message}`));
+      }
+    }
+
+    // Load all images to measure them
+    const loaded = [];
+    for (const li of labelImages) {
+      const img = await new Promise((res, rej) => {
+        const i = new Image();
+        i.onload = () => res(i);
+        i.onerror = () => rej(new Error('image load failed'));
+        i.src = li.url;
+      });
+      loaded.push({ ...li, img });
+    }
+
+    // Tape height in pixels (printable area) — match what each label was
+    // rendered at so they stack correctly
+    const tapeHeightPx = maxPrintPx || TAPE_HEIGHTS_PX[tapeWidthMm] || 70;
+    // Gap between adjacent labels — minimal so auto-cutter has clear tape
+    // Each label already has 3mm cut-clearance on its own sides, so the
+    // gap between labels is just air. Use 0 - the existing 3mm + 3mm
+    // between adjacent labels = 6mm of clear cut zone, which is plenty.
+    const interLabelGapPx = 0;
+
+    // Optional scissor-guide dotted line at each boundary
+    const drawGuides = true;
+
+    const totalLengthPx = loaded.reduce((s, l) => s + l.img.width, 0)
+                       + interLabelGapPx * (loaded.length - 1);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = totalLengthPx;
+    canvas.height = tapeHeightPx;
+    const ctx = canvas.getContext('2d');
+
+    // White background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw each label at its position
+    let xCursor = 0;
+    for (let i = 0; i < loaded.length; i++) {
+      const li = loaded[i];
+      ctx.drawImage(li.img, xCursor, 0);
+
+      // Tiny tick marks at the top/bottom of the boundary between labels
+      // — visible only as a scissor guide if auto-cut misses
+      if (drawGuides && i < loaded.length - 1) {
+        const boundaryX = xCursor + li.img.width + interLabelGapPx / 2;
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(boundaryX - 0.5, 0, 1, 2);                     // top tick
+        ctx.fillRect(boundaryX - 0.5, tapeHeightPx - 2, 1, 2);      // bottom tick
+      }
+
+      xCursor += li.img.width + interLabelGapPx;
+    }
+
+    // Final 1-bit threshold
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const d = imgData.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const v = (d[i] + d[i+1] + d[i+2]) / 3;
+      const bw = v < 200 ? 0 : 255;
+      d[i] = d[i+1] = d[i+2] = bw;
+      d[i+3] = 255;
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    resolve(canvas.toDataURL('image/png'));
+  });
+}
+
 async function printBatchToTape() {
+  // Gather selected rows in table order
   const selected = state.rows.filter(r => r.selected);
   if (selected.length === 0) {
-    alert('No labels selected. Tick the boxes on the left of the rows you want, then try again.');
+    alert('No rows selected. Check the boxes in the leftmost column, then try again.');
     return;
   }
 
+  // Expand by Copies field
   const expanded = [];
   for (const row of selected) {
     const copies = Math.max(1, parseInt(row.copies || 1));
     for (let i = 0; i < copies; i++) expanded.push(row);
   }
 
+  // Check printer
   let status;
   try {
     const r = await fetch('/api/printer/status');
     status = await r.json();
   } catch (e) {
-    alert('Could not reach the printer service. Is the backend running?');
+    alert('Cannot reach printer endpoint. Is the backend running?');
     return;
   }
   if (!status.connected) {
@@ -2096,31 +2360,37 @@ async function printBatchToTape() {
     alert(`Printer not connected.\n\n${detail}`);
     return;
   }
-  const tapeWidth = status.tape_width_mm || 12;
+  const tapeWidth = resolveTapeWidth(status);
+  const maxPrintPx = resolveMaxPrintPx(tapeWidth, status);
+  const mismatch = tapeWidthMismatchWarning(tapeWidth, status);
+  const tapeSource = (state.tapeWidthMm === 'auto') ? 'from printer' : 'user choice';
 
+  // Estimate tape usage so user can decide
   const totalContentMm = expanded.reduce((s, r) => s + getRowDims(r).w, 0);
   const leaderMm = 25;
   const totalTapeMm = totalContentMm + leaderMm;
   const savedVsIndividualMm = (expanded.length - 1) * leaderMm;
 
-  const confirmMsg =
-    `Print ${expanded.length} labels in one batch on ${status.model || 'tape printer'}?\n\n` +
-    `- Tape: ${tapeWidth}mm\n` +
-    `- Tape used: ~${totalTapeMm.toFixed(0)}mm (${(totalTapeMm / 25.4).toFixed(1)}")\n` +
-    `- Saves ~${savedVsIndividualMm}mm vs printing one at a time`;
+  let confirmMsg =
+    `Print ${expanded.length} labels as ONE batch on ${status.model || 'tape printer'}?\n\n` +
+    `• Tape: ${tapeWidth}mm (${tapeSource})\n` +
+    `• Total tape used: ~${totalTapeMm.toFixed(0)}mm (${(totalTapeMm / 25.4).toFixed(1)}")\n` +
+    `• Savings vs printing individually: ~${savedVsIndividualMm}mm of leader tape`;
+  if (mismatch) confirmMsg += `\n\n⚠ ${mismatch}`;
 
   if (!confirm(confirmMsg)) return;
 
+  // Render each label as its own PNG (separate so ptouch-print cuts between them)
   const btn = el('printBatchBtn');
   const originalText = btn.textContent;
-  btn.textContent = 'Rendering...';
+  btn.textContent = '⌛ Rendering...';
   btn.disabled = true;
 
   let pngList = [];
   try {
     for (const row of expanded) {
-      const url = await renderRowToTapePng(row, tapeWidth, status.max_print_px);
-      pngList.push(url.split(',')[1]);
+      const url = await renderRowToTapePng(row, tapeWidth, maxPrintPx);
+      pngList.push(url.split(',')[1]);  // strip data: prefix
     }
   } catch (e) {
     alert('Failed to render batch: ' + e.message);
@@ -2129,7 +2399,7 @@ async function printBatchToTape() {
     return;
   }
 
-  btn.textContent = 'Printing...';
+  btn.textContent = '⌛ Printing...';
 
   try {
     const resp = await fetch('/api/print', {
@@ -2144,7 +2414,7 @@ async function printBatchToTape() {
     if (!result.ok) {
       alert(`Batch print failed:\n${result.error || 'unknown error'}\n\n${JSON.stringify(result.detail || result.results || {}, null, 2)}`);
     } else {
-      btn.textContent = 'Done';
+      btn.textContent = '✓ Printed';
       setTimeout(() => {
         btn.textContent = originalText;
         btn.disabled = false;
@@ -2152,7 +2422,7 @@ async function printBatchToTape() {
       return;
     }
   } catch (e) {
-    alert('Network error: ' + e.message);
+    alert('Network error during batch print: ' + e.message);
   }
 
   btn.textContent = originalText;
@@ -2169,7 +2439,7 @@ function doPrint() {
   const gapV = parseFloat(el('gapV').value) || 0;
 
   const items = expandQueue();
-  if (items.length === 0) { alert('No labels to print yet.'); return; }
+  if (items.length === 0) { alert('Queue is empty.'); return; }
   const pages = paginate(pageW, pageH, margin, gapH, gapV, items);
 
   document.documentElement.style.setProperty('--page-size', isA4 ? 'A4' : 'letter');
@@ -2204,13 +2474,69 @@ function doPrint() {
     area.appendChild(sheet);
   });
 
+  // Fit text then print
   requestAnimationFrame(() => {
     cards.forEach(c => c._fit && c._fit());
-    setTimeout(() => window.print(), 80);
+    setTimeout(() => {
+      window.print();
+    }, 80);
   });
 }
 
-/* ---- PRINTER STATUS ---- */
+/* ---- INIT ---- */
+/* ---- PRINTER STATUS DISPLAY ----
+   Pulls /api/printer/status and renders connection state, model, and tape
+   info in the printer-status strip. Called on page load and via the
+   refresh button. Status is refreshed automatically every 30s in case the
+   user plugs the printer in mid-session. */
+let _lastPrinterStatus = null;  // Slice 1: cached so updateTapeStatusHint can reflect cartridge vs override
+
+/* When the user picks a specific tape width that differs from the loaded
+   cartridge, append an override note to the printer strip so they aren't
+   confused why preview/print uses a different width. Also called when the
+   tape-width dropdown changes, so the strip updates immediately. */
+function updateTapeStatusHint() {
+  const text = document.getElementById('printerText');
+  if (!text) return;
+  const d = _lastPrinterStatus;
+  // If user is on 'auto', just show whatever refreshPrinterStatus produced — no append.
+  if (!state.tapeWidthMm || state.tapeWidthMm === 'auto') {
+    // re-run the base render so any prior override note is cleared
+    if (d) renderPrinterStatusText(d);
+    return;
+  }
+  // Otherwise, render base + append override
+  if (d) renderPrinterStatusText(d);
+  const overrideMm = parseInt(state.tapeWidthMm, 10);
+  if (!isNaN(overrideMm)) {
+    const cur = text.textContent;
+    text.textContent = cur + ` · designing for ${overrideMm}mm`;
+  }
+}
+
+function renderPrinterStatusText(d) {
+  const dot = document.getElementById('printerDot');
+  const text = document.getElementById('printerText');
+  if (!dot || !text) return;
+  if (d.connected) {
+    dot.className = 'dot ok';
+    const parts = [];
+    if (d.model) parts.push(d.model);
+    if (d.tape_width_mm) {
+      parts.push(`${d.tape_width_mm}mm tape`);
+    } else if (d.tape_width_px) {
+      parts.push(`${d.tape_width_px}px tape`);
+    }
+    text.textContent = parts.join(' · ') || 'Ready';
+  } else {
+    dot.className = 'dot err';
+    let msg = 'Not connected';
+    if (d.hint) msg += ` — ${d.hint}`;
+    else if (d.error) msg += ` — ${d.error}`;
+    text.textContent = msg;
+  }
+}
+
 async function refreshPrinterStatus() {
   const dot = document.getElementById('printerDot');
   const text = document.getElementById('printerText');
@@ -2218,29 +2544,19 @@ async function refreshPrinterStatus() {
   if (!dot || !text) return;
 
   if (btn) btn.disabled = true;
-  text.textContent = 'checking...';
+  text.textContent = 'checking…';
   dot.className = 'dot unknown';
 
   try {
     const r = await fetch('/api/printer/status', { cache: 'no-store' });
     const d = await r.json();
-    if (d.connected) {
-      dot.className = 'dot ok';
-      const parts = ['Ready'];
-      if (d.model) parts.push(d.model);
-      if (d.tape_width_mm) parts.push(`${d.tape_width_mm}mm tape`);
-      else if (d.tape_width_px) parts.push(`${d.tape_width_px}px tape`);
-      text.textContent = parts.join(' \u00b7 ');
-    } else {
-      dot.className = 'dot err';
-      let msg = 'Not connected';
-      if (d.hint) msg += ` \u2014 ${d.hint}`;
-      else if (d.error) msg += ` \u2014 ${d.error}`;
-      text.textContent = msg;
-    }
+    _lastPrinterStatus = d;
+    renderPrinterStatusText(d);
+    updateTapeStatusHint();
   } catch(e) {
     dot.className = 'dot err';
-    text.textContent = 'Could not check printer status';
+    text.textContent = 'Could not query printer';
+    _lastPrinterStatus = null;
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -2249,9 +2565,12 @@ async function refreshPrinterStatus() {
 (async function init() {
   setupListeners();
   toggleUrlField();
+  updateBackendIndicator();
   await loadAll();
   renderAll();
+  // Probe for the Pi backend API. If found, upgrade storage and reload data.
   _upgradeToApiIfAvailable();
+  // Printer status — initial check + refresh every 30 seconds
   refreshPrinterStatus();
   setInterval(refreshPrinterStatus, 30000);
 })();

@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.10.2"  # QR scanner: downsample frames + faster dwell + bigger target box
+APP_VERSION = "1.11.0"  # Forge: tape size + tape color dropdowns; preset storage keys
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
@@ -43,6 +43,8 @@ ALLOWED_KEYS = {
     "gflf:registry",
     "gflf:rows",
     "gflf:config",
+    "gflf:tape_presets",   # user-saved {name, desc, widthMm, lengthMm} for tape mode
+    "gflf:sheet_presets",  # user-saved {name, desc, widthMm, heightMm, orientation} for sheet mode
 }
 
 app = Flask(__name__)
