@@ -1,4 +1,4 @@
-# push.ps1 â€” sync files from OneDrive working folder to the git repo, commit, push.
+# push.ps1 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â sync files from OneDrive working folder to the git repo, commit, push.
 # Usage:
 #   .\push.ps1 -Message "v1.11.0: my change"
 #   .\push.ps1 -Message "..." -DryRun        (preview without committing)
@@ -43,6 +43,9 @@ $mappings = @(
     @{ Src = "gridfinity-backend.service";         Dst = "etc\gridfinity-backend.service" }
     @{ Src = "gridfinity-wifi-sudoers.template";   Dst = "etc\gridfinity-wifi-sudoers.template" }
     @{ Src = "prepare-sd.ps1";                     Dst = "prepare-sd.ps1" }
+    @{ Src = "migrate-hostname.sh";          Dst = "migrate-hostname.sh" }
+    @{ Src = "INV_BACKUP.md";                Dst = "INV_BACKUP.md" }
+
     @{ Src = "FRIEND_QUICKSTART.md";               Dst = "FRIEND_QUICKSTART.md" }
 )
 

@@ -398,6 +398,36 @@ else
   ok "WiFi AP-mode bootstrap skipped (--no-bootstrap)"
 fi
 
+# ---- Optional USB backup drive --------------------------------------------
+# If the user has an ext4 partition labeled "backup-ssd" plugged in, set it up
+# as the backup target at /mnt/backup. This is fully optional — installation
+# succeeds without it. The mount is configured to fail gracefully if the drive
+# is unplugged (nofail), so removing the SSD won't break boot.
+if blkid -L backup-ssd >/dev/null 2>&1; then
+  info "Detected backup drive (LABEL=backup-ssd)"
+  mkdir -p /mnt/backup
+  # Add fstab line if not already present.
+  FSTAB_LINE='LABEL=backup-ssd  /mnt/backup  ext4  defaults,nofail,x-systemd.device-timeout=10s  0  2'
+  if ! grep -q "^LABEL=backup-ssd" /etc/fstab 2>/dev/null; then
+    echo "$FSTAB_LINE" >> /etc/fstab
+    ok "Added backup-ssd to /etc/fstab"
+  fi
+  systemctl daemon-reload
+  # Mount if not already mounted
+  if ! mountpoint -q /mnt/backup; then
+    mount /mnt/backup 2>/dev/null || warn "Could not mount /mnt/backup — check fstab"
+  fi
+  # Service user must own /mnt/backup so the backend can write backup files.
+  # Without this, /api/system/backup-to-drive fails with PermissionError.
+  if mountpoint -q /mnt/backup; then
+    chown "$SERVICE_USER:$SERVICE_USER" /mnt/backup
+    chmod 755 /mnt/backup
+    ok "Backup drive mounted at /mnt/backup (owner $SERVICE_USER)"
+  fi
+else
+  ok "No USB backup drive detected (optional — skip)"
+fi
+
 # ---- Cleanup --------------------------------------------------------------
 # (We KEEP $SRC_DIR now â€” it lives at $PERSISTENT_SRC and is used by the
 #  update system to pull future versions. Don't delete it.)
