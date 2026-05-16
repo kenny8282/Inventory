@@ -7,3 +7,5 @@ desktop.ini
 *.swo
 *~
 .deploy-state.json
+keys/
+*.pub

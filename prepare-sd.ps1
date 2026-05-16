@@ -17,15 +17,26 @@
 #   5. Hooks cmdline.txt to run firstrun.sh on first boot
 #
 # Usage:
-#   .\prepare-sd.ps1                  # auto-detect drive letter
+#   .\prepare-sd.ps1                  # auto-detect drive letter, use ~/.ssh/id_ed25519.pub
+#                                     # AND any .pub files in ./keys/
 #   .\prepare-sd.ps1 -DriveLetter E   # specify drive explicitly
 #   .\prepare-sd.ps1 -Hostname mike   # set custom hostname (default: gridfinity)
+#   .\prepare-sd.ps1 -PubKeyPaths a.pub,b.pub   # trust multiple specific keys
+#
+# To trust both your laptop's AND your desktop's keys on a freshly imaged SD:
+#   1. Copy each machine's ~/.ssh/id_ed25519.pub to a 'keys' folder next
+#      to this script (rename so they're distinct, e.g. laptop.pub, desktop.pub)
+#   2. Run prepare-sd.ps1 normally. It picks them all up automatically.
 # ============================================================================
 
 param(
     [string]$DriveLetter = "",
     [string]$Hostname = "gridfinity",
-    [string]$PubKeyPath = "$env:USERPROFILE\.ssh\id_ed25519.pub"
+    # One or more SSH public key files. By default we pick up:
+    #   1. ~/.ssh/id_ed25519.pub (this machine's key)
+    #   2. Any *.pub files next to this script (e.g. in a 'keys' folder
+    #      so you can ship the SD card with multiple admin keys trusted)
+    [string[]]$PubKeyPaths = @()
 )
 
 $ErrorActionPreference = "Stop"
@@ -38,11 +49,58 @@ function Fail($msg)    { Write-Host "  [X]  $msg" -ForegroundColor Red; exit 1 }
 # ---- Pre-flight checks ----------------------------------------------------
 Info "Pre-flight checks"
 
-if (-not (Test-Path $PubKeyPath)) {
-    Fail "Public key not found at $PubKeyPath. Generate one with: ssh-keygen -t ed25519"
+# Build the list of SSH keys to trust on the Pi
+$keyFiles = @()
+
+# Explicitly passed keys
+foreach ($p in $PubKeyPaths) {
+    if (Test-Path $p) { $keyFiles += (Resolve-Path $p).Path }
+    else { Warn "Key file not found, skipping: $p" }
 }
-$publicKey = (Get-Content $PubKeyPath -Raw).Trim()
-Ok "Found SSH public key: $($publicKey.Substring(0, 30))..."
+
+# This machine's default key, unless already in the list
+$defaultKey = "$env:USERPROFILE\.ssh\id_ed25519.pub"
+if ((Test-Path $defaultKey) -and ($keyFiles -notcontains (Resolve-Path $defaultKey).Path)) {
+    $keyFiles += (Resolve-Path $defaultKey).Path
+}
+
+# Any *.pub files in a 'keys' folder next to this script
+$scriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { (Get-Location).Path }
+$keysFolder = Join-Path $scriptDir "keys"
+if (Test-Path $keysFolder) {
+    Get-ChildItem -Path $keysFolder -Filter "*.pub" -File | ForEach-Object {
+        if ($keyFiles -notcontains $_.FullName) { $keyFiles += $_.FullName }
+    }
+}
+
+if ($keyFiles.Count -eq 0) {
+    Fail "No SSH public keys found. Generate one with: ssh-keygen -t ed25519`n       Or put .pub files in a 'keys' folder next to this script."
+}
+
+# Read all keys, one per line. De-duplicate by the actual key payload
+# (so you don't accidentally trust the same key twice with different comments).
+$keysSeen = @{}
+$publicKeyLines = @()
+foreach ($f in $keyFiles) {
+    $content = (Get-Content $f -Raw).Trim()
+    foreach ($line in ($content -split "`r?`n")) {
+        $line = $line.Trim()
+        if (-not $line) { continue }
+        # Key fingerprint = the base64 portion (2nd field)
+        $parts = $line -split '\s+', 3
+        if ($parts.Count -lt 2) { continue }
+        $fp = $parts[1]
+        if ($keysSeen.ContainsKey($fp)) { continue }
+        $keysSeen[$fp] = $true
+        $publicKeyLines += $line
+        $name = Split-Path $f -Leaf
+        $shortFp = if ($fp.Length -gt 16) { $fp.Substring($fp.Length - 16) } else { $fp }
+        Ok "Key: $name (...$shortFp)"
+    }
+}
+
+$publicKey = $publicKeyLines -join "`n"
+Ok "Total: $($publicKeyLines.Count) SSH key(s) will be trusted on the Pi"
 
 # ---- Find the boot partition ---------------------------------------------
 Info "Locating SD card boot partition"
@@ -138,13 +196,15 @@ Info "Enabling SSH"
 New-Item -ItemType File -Force -Path (Join-Path $BootDrive "ssh") | Out-Null
 Ok "SSH enabled (will start on first boot)"
 
-# ---- Drop the SSH public key for passwordless login ----------------------
-Info "Staging your SSH public key"
+# ---- Drop the SSH public key(s) for passwordless login -------------------
+Info "Staging $($publicKeyLines.Count) SSH public key(s)"
 # We'll have firstrun.sh place it in /home/gridfinity/.ssh/authorized_keys
 New-Item -ItemType Directory -Force -Path (Join-Path $BootDrive "gridfinity") | Out-Null
 $authKeyPath = Join-Path $BootDrive "gridfinity\authorized_keys"
-$publicKey | Out-File -Encoding ASCII -NoNewline -FilePath $authKeyPath
-Ok "Public key staged at $authKeyPath"
+# Write with LF line endings (Linux SSH doesn't like CRLF in authorized_keys)
+$lf = $publicKey + "`n"
+[System.IO.File]::WriteAllText($authKeyPath, $lf, [System.Text.Encoding]::ASCII)
+Ok "Public key(s) staged at $authKeyPath"
 
 # ---- Set the hostname -----------------------------------------------------
 Info "Setting hostname"
