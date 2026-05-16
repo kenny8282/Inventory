@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.15.0"  # Forge: Reprint Label (QR scanner → existing data → edit → inventory PUT on print)
+APP_VERSION = "1.15.1"  # Forge: Reprint scan UI matches inventory app (inline card, dwell-time, target box)
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))

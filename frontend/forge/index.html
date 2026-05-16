@@ -719,84 +719,64 @@
   }
 
   /* ============================================================================
-     SLICE 5 ADDITIONS — scan modal for Reprint Label
+     SLICE 5 ADDITIONS — inline scan card for Reprint Label, matches inventory app
      ============================================================================ */
-  .scan-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 200;
-    background: rgba(22, 22, 22, 0.85);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-  }
-  .scan-modal-inner {
+  .scan-card {
     background: var(--paper);
-    border: 2px solid var(--ink);
-    width: 100%;
-    max-width: 440px;
-    max-height: 90vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+    border: 1.5px solid var(--ink);
+    padding: 16px;
+    margin-bottom: 18px;
   }
-  .scan-modal-header {
-    background: var(--ink);
-    color: var(--paper);
-    padding: 10px 14px;
+  .scan-card-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    margin-bottom: 12px;
   }
-  .scan-modal-header .title {
+  .scan-card-head .title {
     font-family: 'Archivo', sans-serif;
     font-weight: 800;
     font-size: 12px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
+    color: var(--ink);
   }
-  .scan-modal .scan-close {
+  .scan-card .scan-close {
     background: transparent;
-    color: var(--paper);
-    border: none;
-    font-size: 18px;
+    border: 1px solid var(--rule);
+    color: var(--muted);
+    font-size: 14px;
+    padding: 2px 8px;
     cursor: pointer;
-    padding: 0 6px;
     line-height: 1;
   }
-  .scan-modal .scan-close:hover { color: var(--accent); }
-  .scan-video-wrap {
+  .scan-card .scan-close:hover { color: var(--accent); border-color: var(--accent); }
+  .scan-frame {
     position: relative;
     width: 100%;
-    aspect-ratio: 4 / 3;
+    max-width: 360px;
+    margin: 0 auto;
+    aspect-ratio: 1;
     background: #000;
     overflow: hidden;
+    border: 2px solid var(--ink);
   }
-  .scan-video-wrap video {
+  .scan-frame video {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
   }
-  /* Reticle to hint the user where to point the QR */
-  .scan-reticle {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    width: 60%;
-    aspect-ratio: 1 / 1;
-    border: 2px solid rgba(253, 252, 247, 0.85);
-    box-shadow: 0 0 0 9999px rgba(0,0,0,0.35);
-    pointer-events: none;
-  }
+  .scan-frame canvas { display: none; }
   .scan-status {
-    padding: 10px 14px;
+    margin-top: 12px;
+    text-align: center;
     font-size: 12px;
     color: var(--muted);
+    min-height: 18px;
     font-family: 'JetBrains Mono', monospace;
-    text-align: center;
-    border-top: 1px solid var(--rule);
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
   }
   .scan-status.found {
     color: #1a5d1a;
@@ -806,24 +786,89 @@
     color: var(--accent);
     font-weight: 700;
   }
-  .scan-actions {
-    padding: 10px 14px;
-    border-top: 1px solid var(--rule);
+  .scan-controls {
     display: flex;
+    gap: 8px;
+    margin-top: 12px;
     justify-content: center;
   }
-  .scan-actions button {
+  .scan-controls button {
     padding: 8px 14px;
     font-size: 11px;
-    font-family: 'Archivo', sans-serif;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    cursor: pointer;
+  }
+
+  /* Targeting overlay with dim mask, rounded cutout, corner brackets, dwell arc.
+     viewBox is 100×100; the cutout sits at 24..76 (52% center) with 4px rounded
+     corners. Total perimeter ≈ 200 SVG units, used for the dwell progress arc. */
+  .target-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .target-overlay svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .target-overlay .mask {
+    fill: rgba(8, 12, 16, 0.62);
+    fill-rule: evenodd;
+  }
+  .target-overlay .frame {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.32);
+    stroke-width: 0.6;
+    transition: stroke 0.2s ease, stroke-width 0.2s ease;
+  }
+  .target-overlay.locking .frame {
+    stroke: rgba(255, 200, 0, 0.6);
+    stroke-width: 0.8;
+  }
+  .target-overlay.locked .frame {
+    stroke: rgba(74, 222, 128, 0.95);
+    stroke-width: 1.2;
+  }
+  .target-overlay .corner {
+    fill: none;
+    stroke: white;
+    stroke-width: 1.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 0 1.5px rgba(0,0,0,0.6));
+    transition: stroke 0.2s ease;
+  }
+  .target-overlay.locking .corner { stroke: #ffcc33; }
+  .target-overlay.locked  .corner { stroke: #4ade80; }
+  .target-overlay .progress {
+    fill: none;
+    stroke: #4ade80;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 0 2px rgba(74, 222, 128, 0.7));
+    transition: stroke-dashoffset 0.08s linear;
+  }
+
+  .scan-flash {
+    position: absolute;
+    inset: 0;
+    background: var(--green);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.1s;
+  }
+  .scan-flash.flash {
+    opacity: 0.7;
+    animation: flashOut 0.4s ease-out forwards;
+  }
+  @keyframes flashOut {
+    0%   { opacity: 0.7; }
+    100% { opacity: 0; }
   }
 
   /* Brief highlight pulse for a row that the user just scanned (when row already
-     existed in this tab — we scroll it into view and pulse it). */
+     existed in this tab — we move it to top and pulse it). */
   @keyframes row-pulse {
     0%   { background: rgba(200, 52, 26, 0.30); }
     100% { background: transparent; }
@@ -1087,6 +1132,86 @@
         <option value="24">24 mm</option>
       </select>
     </span>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- REPRINT SCAN CARD — inline, same look as inventory app         -->
+  <!-- Hidden by default. Shown when Reprint Label is clicked.        -->
+  <!-- ============================================================ -->
+  <div class="scan-card" id="scanCard" style="display:none;">
+    <div class="scan-card-head">
+      <span class="title">SCAN LABEL TO REPRINT</span>
+      <button id="scanCloseBtn" class="scan-close" aria-label="Close">✕</button>
+    </div>
+    <div class="scan-frame" id="scanFrame">
+      <video id="scanVideo" autoplay playsinline muted></video>
+      <canvas id="scanCanvas"></canvas>
+      <!-- Targeting overlay: dim mask with rounded cutout, corner brackets, dwell arc -->
+      <div class="target-overlay" id="targetOverlay">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+          <path class="mask" d="M0,0 H100 V100 H0 Z
+                                M28,24
+                                C26,24 24,26 24,28
+                                V72
+                                C24,74 26,76 28,76
+                                H72
+                                C74,76 76,74 76,72
+                                V28
+                                C76,26 74,24 72,24
+                                H28 Z"/>
+          <path class="frame" d="M28,24
+                                 C26,24 24,26 24,28
+                                 V72
+                                 C24,74 26,76 28,76
+                                 H72
+                                 C74,76 76,74 76,72
+                                 V28
+                                 C76,26 74,24 72,24
+                                 H28 Z"/>
+          <path class="corner" d="M24,32 V28 C24,26 26,24 28,24 H32"/>
+          <path class="corner" d="M68,24 H72 C74,24 76,26 76,28 V32"/>
+          <path class="corner" d="M76,68 V72 C76,74 74,76 72,76 H68"/>
+          <path class="corner" d="M32,76 H28 C26,76 24,74 24,72 V68"/>
+          <path class="progress" id="dwellProgress"
+                d="M50,24
+                   H72
+                   C74,24 76,26 76,28
+                   V72
+                   C76,74 74,76 72,76
+                   H28
+                   C26,76 24,74 24,72
+                   V28
+                   C24,26 26,24 28,24
+                   H50"
+                stroke-dasharray="200" stroke-dashoffset="200"/>
+        </svg>
+      </div>
+      <div class="scan-flash" id="scanFlash"></div>
+    </div>
+    <div class="scan-status" id="scanStatus">Initializing camera…</div>
+    <div class="scan-controls">
+      <button id="manualEntryBtn" class="secondary">⌨ Type ID manually</button>
+    </div>
+  </div>
+
+  <!-- Inline manual-ID prompt: replaces the camera frame when "Type ID manually" is clicked -->
+  <div class="scan-card" id="manualCard" style="display:none;">
+    <div class="scan-card-head">
+      <span class="title">ENTER LABEL ID</span>
+      <button id="manualCloseBtn" class="scan-close" aria-label="Close">✕</button>
+    </div>
+    <div style="padding: 14px;">
+      <div class="field" style="margin-bottom: 8px;">
+        <label>Label ID (case-insensitive)</label>
+        <input type="text" id="manualIdInput" maxlength="8" placeholder="X7K2M"
+               autocapitalize="characters" autocomplete="off"
+               style="text-transform:uppercase;font-family:'JetBrains Mono';font-size:16px;letter-spacing:0.12em;" />
+      </div>
+      <div class="btn-row">
+        <button id="manualSubmitBtn" class="primary">Look up</button>
+        <button id="manualBackBtn" class="secondary">← Back to camera</button>
+      </div>
+    </div>
   </div>
 
   <!-- ============================================================ -->
@@ -1425,46 +1550,6 @@
 
 <!-- Off-screen area for printing -->
 <div id="print-area"></div>
-
-<!-- ============================================================ -->
-<!-- SCAN MODAL — Reprint Label flow (Slice 5)                     -->
-<!-- ============================================================ -->
-<div id="scanModal" class="scan-modal" style="display:none;" role="dialog" aria-modal="true" aria-label="Scan label to reprint">
-  <div class="scan-modal-inner">
-    <div class="scan-modal-header">
-      <span class="title">SCAN LABEL TO REPRINT</span>
-      <button id="scanCancelBtn" class="scan-close" aria-label="Cancel">✕</button>
-    </div>
-    <div class="scan-video-wrap">
-      <video id="scanVideo" playsinline muted autoplay></video>
-      <canvas id="scanCanvas" style="display:none;"></canvas>
-      <div class="scan-reticle"></div>
-    </div>
-    <div class="scan-status" id="scanStatus">Point the camera at a QR code…</div>
-    <div class="scan-actions">
-      <button id="scanManualBtn" class="secondary">Type ID instead</button>
-    </div>
-  </div>
-</div>
-
-<!-- Manual-ID fallback (when camera isn't available or user prefers typing) -->
-<div id="manualIdModal" class="scan-modal" style="display:none;" role="dialog" aria-modal="true" aria-label="Enter label ID">
-  <div class="scan-modal-inner">
-    <div class="scan-modal-header">
-      <span class="title">ENTER LABEL ID</span>
-      <button id="manualCancelBtn" class="scan-close" aria-label="Cancel">✕</button>
-    </div>
-    <div style="padding: 18px;">
-      <div class="field">
-        <label>5-character label ID (case-insensitive)</label>
-        <input type="text" id="manualIdInput" maxlength="5" placeholder="X7K2M" autocapitalize="characters" autocomplete="off" style="text-transform:uppercase;font-family:'JetBrains Mono';font-size:16px;letter-spacing:0.1em;" />
-      </div>
-      <div class="btn-row" style="margin-top: 12px;">
-        <button id="manualSubmitBtn" class="primary">Look up</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- ============================================================ -->
 <!-- STICKY PRINT BAR — appears above bottom nav per active tab     -->
@@ -2777,10 +2862,10 @@ function renderRowToTapePng(row, tapeWidthMm = 12, maxPrintPx = null) {
 /* ============================================================================
    SLICE 5 — REPRINT LABEL flow
    ============================================================================
-   Click "Reprint Label" → camera modal → scan QR → resolve to ID → either bring
-   existing row to top (if already in this tab) or add new row pre-filled from
-   inventory (or just the ID if not in inventory). On successful print of a
-   reprint row, PUT updated text lines to /api/items/<id> to refresh inventory.
+   Click "Reprint Label" → inline scan card opens (matches inventory app style)
+   → camera previews with targeting box + corner brackets + dwell arc
+   → QR locked in for 250ms triggers handleScannedId → row populated → card closes.
+   On successful print of a reprint row, PUT updated text lines to /api/items/<id>.
 */
 
 /* Extract the label ID from a scanned QR payload. Mirrors the inventory app's
@@ -2793,14 +2878,12 @@ function renderRowToTapePng(row, tapeWidthMm = 12, maxPrintPx = null) {
 function normalizeQrPayload(raw) {
   if (!raw || typeof raw !== 'string') return null;
   const s = raw.trim();
-  // JSON record (full)
   if (s.startsWith('{')) {
     try {
       const j = JSON.parse(s);
       if (j && typeof j.id === 'string' && j.id.length >= 3) return j.id.toUpperCase();
     } catch (e) {}
   }
-  // URL with ID as last path segment
   if (s.startsWith('http://') || s.startsWith('https://')) {
     try {
       const u = new URL(s);
@@ -2808,52 +2891,165 @@ function normalizeQrPayload(raw) {
       if (last && /^[A-Z0-9]{3,8}$/i.test(last)) return last.toUpperCase();
     } catch (e) {}
   }
-  // Combined "ID|name"
   if (s.includes('|')) {
     const left = s.split('|')[0].trim();
     if (/^[A-Z0-9]{3,8}$/i.test(left)) return left.toUpperCase();
   }
-  // Plain ID
   if (/^[A-Z0-9]{3,8}$/i.test(s)) return s.toUpperCase();
   return null;
 }
 
-/* Scan-modal state. Camera stream and scan loop are torn down on close. */
+/* Scanner state — uses dwell-time pattern from inventory app */
+const SCAN_DWELL_MS         = 250;   // QR must be in target box this long to lock
+const SCAN_DWELL_GRACE_MS   = 400;   // grace window if camera drops a frame
+const SCAN_TARGET_INSET     = 0.18;  // 18% margin → 64% center box
+const SCAN_DOWNSCALE_MAX_DIM= 960;   // process frames at <=960px wide for speed
+const SCAN_MAX_DETECT       = 3;     // multi-QR attempts per frame
+
 const _scan = {
   stream: null,
   rafId: null,
   active: false,
-  tabName: null,        // which tab requested the reprint
+  tabName: null,                 // which tab requested the reprint
+  dwellId: null,
+  dwellStart: 0,
+  dwellLastSeen: 0,
+  cooldownUntil: 0,
 };
+
+/* Returns true if a QR's center is inside the targeting box. The visible video
+   uses object-fit:cover on a square frame, so we use the smaller dimension as
+   the reference for both axes (matches inventory app exactly). */
+function _qrInTargetBox(code, videoW, videoH) {
+  const loc = code.location;
+  const cx = (loc.topLeftCorner.x + loc.bottomRightCorner.x) / 2;
+  const cy = (loc.topLeftCorner.y + loc.bottomRightCorner.y) / 2;
+  const minDim = Math.min(videoW, videoH);
+  const cropX = (videoW - minDim) / 2;
+  const cropY = (videoH - minDim) / 2;
+  const relX = cx - cropX;
+  const relY = cy - cropY;
+  const lo = minDim * SCAN_TARGET_INSET;
+  const hi = minDim * (1 - SCAN_TARGET_INSET);
+  return relX >= lo && relX <= hi && relY >= lo && relY <= hi;
+}
+
+/* Multi-QR detect (mask painted between passes so we don't re-find the same one) */
+function _detectAllQrs(imageData, maxAttempts) {
+  if (typeof jsQR === 'undefined') return [];
+  const found = [];
+  const data = imageData.data;
+  const width = imageData.width;
+  const height = imageData.height;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const code = jsQR(data, width, height, { inversionAttempts: 'attemptBoth' });
+    if (!code) break;
+    found.push(code);
+    const loc = code.location;
+    const xs = [loc.topLeftCorner.x, loc.topRightCorner.x, loc.bottomLeftCorner.x, loc.bottomRightCorner.x];
+    const ys = [loc.topLeftCorner.y, loc.topRightCorner.y, loc.bottomLeftCorner.y, loc.bottomRightCorner.y];
+    const pad = 8;
+    const x0 = Math.max(0, Math.floor(Math.min(...xs)) - pad);
+    const x1 = Math.min(width, Math.ceil(Math.max(...xs)) + pad);
+    const y0 = Math.max(0, Math.floor(Math.min(...ys)) - pad);
+    const y1 = Math.min(height, Math.ceil(Math.max(...ys)) + pad);
+    for (let y = y0; y < y1; y++) {
+      let i = (y * width + x0) * 4;
+      for (let x = x0; x < x1; x++) {
+        data[i] = 255; data[i+1] = 255; data[i+2] = 255; data[i+3] = 255;
+        i += 4;
+      }
+    }
+  }
+  return found;
+}
+
+/* Update dwell arc + overlay state class. Total path length ≈ 200 SVG units. */
+function _setDwellVisual(progress, mode) {
+  const overlay = el('targetOverlay');
+  const arc = el('dwellProgress');
+  if (!overlay || !arc) return;
+  const total = 200;
+  arc.setAttribute('stroke-dashoffset', String(total * (1 - progress)));
+  overlay.classList.remove('locking', 'locked');
+  if (mode === 'locking') overlay.classList.add('locking');
+  else if (mode === 'locked') overlay.classList.add('locked');
+}
+
+/* Flash effect on lock — brief green pulse over the camera frame */
+function _flashScanFrame() {
+  const f = el('scanFlash'); if (!f) return;
+  f.classList.remove('flash');
+  // Force reflow so the animation restarts
+  void f.offsetWidth;
+  f.classList.add('flash');
+}
 
 async function openReprintScan(tabName) {
   _scan.tabName = tabName;
-  const modal = el('scanModal'); if (!modal) return;
-  const video = el('scanVideo');
+  const card = el('scanCard'); if (!card) return;
+  const manual = el('manualCard'); if (manual) manual.style.display = 'none';
+  card.style.display = '';
+  // Scroll the card into view (it's at the top of the app, above the tabs)
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
   const status = el('scanStatus');
   status.className = 'scan-status';
-  status.textContent = 'Starting camera…';
-  modal.style.display = 'flex';
+  status.textContent = 'Requesting camera…';
+  _setDwellVisual(0, 'idle');
+  _scan.dwellId = null; _scan.dwellStart = 0; _scan.dwellLastSeen = 0; _scan.cooldownUntil = 0;
 
   if (typeof jsQR === 'undefined') {
     status.className = 'scan-status error';
-    status.textContent = 'QR library not loaded. Use "Type ID instead".';
+    status.textContent = '⚠ QR library not loaded. Use "Type ID manually".';
+    return;
+  }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    status.className = 'scan-status error';
+    status.textContent = '⚠ Camera not supported in this browser';
     return;
   }
 
   try {
-    _scan.stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment' },
+    const constraints = {
+      video: {
+        facingMode: { ideal: 'environment' },
+        width:  { ideal: 1920 },
+        height: { ideal: 1080 },
+        focusMode: 'continuous',
+        advanced: [{ focusMode: 'continuous' }, { focusMode: 'auto' }],
+      },
       audio: false,
-    });
-    video.srcObject = _scan.stream;
+    };
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    _scan.stream = stream;
+    const video = el('scanVideo');
+    video.srcObject = stream;
     await video.play();
-    status.textContent = 'Point the camera at a QR code…';
+    // Try to enable continuous autofocus
+    const track = stream.getVideoTracks()[0];
+    if (track && track.applyConstraints) {
+      try {
+        const caps = track.getCapabilities ? track.getCapabilities() : {};
+        if (caps.focusMode && caps.focusMode.includes('continuous')) {
+          await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+        }
+      } catch (e) {}
+    }
+    // Tap-to-focus
+    video.onclick = async () => {
+      if (!track || !track.applyConstraints) return;
+      try {
+        await track.applyConstraints({ advanced: [{ focusMode: 'single-shot' }] });
+        setTimeout(() => track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(()=>{}), 400);
+      } catch (e) {}
+    };
+    status.textContent = 'Point the camera at the QR (tap to focus)';
     _scan.active = true;
-    scanLoop();
+    requestAnimationFrame(_scanFrame);
   } catch (e) {
     status.className = 'scan-status error';
-    status.textContent = 'Camera blocked or unavailable. Use "Type ID instead".';
+    status.textContent = '⚠ Camera blocked or unavailable';
     console.warn('camera error:', e);
   }
 }
@@ -2866,55 +3062,126 @@ function closeReprintScan() {
     _scan.stream = null;
   }
   const video = el('scanVideo');
-  if (video) { try { video.pause(); video.srcObject = null; } catch (e) {} }
-  const modal = el('scanModal'); if (modal) modal.style.display = 'none';
+  if (video) { try { video.pause(); video.srcObject = null; video.onclick = null; } catch (e) {} }
+  _setDwellVisual(0, 'idle');
+  const card = el('scanCard'); if (card) card.style.display = 'none';
+  const manual = el('manualCard'); if (manual) manual.style.display = 'none';
+  const status = el('scanStatus'); if (status) { status.className = 'scan-status'; status.textContent = ''; }
 }
 
-/* Run jsQR against the current video frame. Down-sample for speed. */
-function scanLoop() {
+/* Main scan loop — single QR in target box with dwell time triggers auto-lock */
+function _scanFrame() {
   if (!_scan.active) return;
   const video = el('scanVideo');
   const canvas = el('scanCanvas');
+  const status = el('scanStatus');
   if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA) {
-    _scan.rafId = requestAnimationFrame(scanLoop);
+    _scan.rafId = requestAnimationFrame(_scanFrame);
     return;
   }
-  // Downsample to ~360px max dimension for jsQR speed
-  const maxDim = 360;
-  const ratio = Math.min(1, maxDim / Math.max(video.videoWidth, video.videoHeight));
-  canvas.width = Math.round(video.videoWidth * ratio);
-  canvas.height = Math.round(video.videoHeight * ratio);
+
+  // Downsample for speed (matches inventory's SCAN_DOWNSCALE_MAX_DIM)
+  const longEdge = Math.max(video.videoWidth, video.videoHeight);
+  const scale = longEdge > SCAN_DOWNSCALE_MAX_DIM ? SCAN_DOWNSCALE_MAX_DIM / longEdge : 1;
+  canvas.width  = Math.round(video.videoWidth  * scale);
+  canvas.height = Math.round(video.videoHeight * scale);
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  try {
-    const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: 'dontInvert' });
-    if (code && code.data) {
-      const id = normalizeQrPayload(code.data);
-      if (id) {
-        _scan.active = false;
-        const status = el('scanStatus');
-        status.className = 'scan-status found';
-        status.textContent = `Scanned: ${id}`;
-        // Small delay so the user sees the confirmation
-        setTimeout(() => { handleScannedId(_scan.tabName, id); closeReprintScan(); }, 300);
-        return;
-      }
+
+  let imageData;
+  try { imageData = ctx.getImageData(0, 0, canvas.width, canvas.height); }
+  catch (e) { status.textContent = '⚠ ' + e.message; return; }
+
+  const codes = _detectAllQrs(imageData, SCAN_MAX_DETECT);
+  const inBox = [];
+  const seen = new Set();
+  for (const code of codes) {
+    if (!_qrInTargetBox(code, canvas.width, canvas.height)) continue;
+    const id = normalizeQrPayload(code.data);
+    if (id && !seen.has(id)) { seen.add(id); inBox.push({ id, code }); }
+  }
+
+  const now = Date.now();
+  const inCooldown = _scan.cooldownUntil > now;
+
+  if (inCooldown) {
+    status.className = 'scan-status found';
+    status.textContent = '✓ Locked';
+  } else if (inBox.length > 1) {
+    _scan.dwellId = null; _scan.dwellStart = 0; _scan.dwellLastSeen = 0;
+    _setDwellVisual(0, 'idle');
+    status.className = 'scan-status';
+    status.textContent = `${inBox.length} QRs in the box — isolate one`;
+  } else if (inBox.length === 1) {
+    const target = inBox[0];
+    if (_scan.dwellId !== target.id) {
+      _scan.dwellId = target.id;
+      _scan.dwellStart = now;
     }
-  } catch (e) { console.warn('jsQR error:', e); }
-  _scan.rafId = requestAnimationFrame(scanLoop);
+    _scan.dwellLastSeen = now;
+    const elapsed = now - _scan.dwellStart;
+    const progress = Math.min(1, elapsed / SCAN_DWELL_MS);
+    if (progress >= 1) {
+      // LOCK
+      _scan.cooldownUntil = now + 1200;
+      _scan.dwellId = null; _scan.dwellStart = 0; _scan.dwellLastSeen = 0;
+      _setDwellVisual(1, 'locked');
+      _flashScanFrame();
+      status.className = 'scan-status found';
+      status.textContent = `✓ ${target.id}`;
+      const tab = _scan.tabName;
+      // Close card after a brief moment so the user sees the confirmation
+      setTimeout(() => {
+        closeReprintScan();
+        handleScannedId(tab, target.id);
+      }, 350);
+      return; // stop the loop; closeReprintScan will tear down the rest
+    } else {
+      _setDwellVisual(progress, 'locking');
+      status.className = 'scan-status';
+      status.textContent = 'Hold steady…';
+    }
+  } else {
+    // No QR in box this frame. Allow brief grace period for camera blur/jitter.
+    if (_scan.dwellId && (now - _scan.dwellLastSeen) < SCAN_DWELL_GRACE_MS) {
+      const elapsed = _scan.dwellLastSeen - _scan.dwellStart;
+      const progress = Math.min(1, elapsed / SCAN_DWELL_MS);
+      _setDwellVisual(progress, 'locking');
+    } else {
+      _scan.dwellId = null; _scan.dwellStart = 0; _scan.dwellLastSeen = 0;
+      _setDwellVisual(0, 'idle');
+      status.className = 'scan-status';
+      status.textContent = 'Point the camera at the QR (tap to focus)';
+    }
+  }
+
+  _scan.rafId = requestAnimationFrame(_scanFrame);
 }
 
-/* Manual ID fallback. */
-function openManualIdModal(tabName) {
-  _scan.tabName = tabName;
-  const m = el('manualIdModal'); if (!m) return;
-  const inp = el('manualIdInput'); if (inp) { inp.value = ''; setTimeout(() => inp.focus(), 50); }
-  m.style.display = 'flex';
+/* Manual-ID fallback — replaces the scan card with a text-input card */
+function openManualEntry() {
+  // Stop the camera but DON'T fully close the flow — keep _scan.tabName so submit knows where
+  _scan.active = false;
+  if (_scan.rafId) { cancelAnimationFrame(_scan.rafId); _scan.rafId = null; }
+  if (_scan.stream) {
+    _scan.stream.getTracks().forEach(t => { try { t.stop(); } catch (e) {} });
+    _scan.stream = null;
+  }
+  const video = el('scanVideo');
+  if (video) { try { video.pause(); video.srcObject = null; } catch (e) {} }
+  const card = el('scanCard'); if (card) card.style.display = 'none';
+  const manual = el('manualCard'); if (manual) manual.style.display = '';
+  const inp = el('manualIdInput');
+  if (inp) { inp.value = ''; setTimeout(() => inp.focus(), 50); }
 }
-function closeManualIdModal() {
-  const m = el('manualIdModal'); if (m) m.style.display = 'none';
+
+function backToScanFromManual() {
+  const tab = _scan.tabName;
+  // Close manual, re-open scanner
+  const manual = el('manualCard'); if (manual) manual.style.display = 'none';
+  openReprintScan(tab);
 }
+
 function submitManualId() {
   const inp = el('manualIdInput'); if (!inp) return;
   const id = (inp.value || '').trim().toUpperCase();
@@ -2924,7 +3191,7 @@ function submitManualId() {
     return;
   }
   const tab = _scan.tabName;
-  closeManualIdModal();
+  closeReprintScan();
   handleScannedId(tab, id);
 }
 
@@ -2932,7 +3199,7 @@ function submitManualId() {
 async function handleScannedId(tabName, id) {
   const ts = getTabState(tabName); if (!ts) return;
 
-  // Case 1: this ID is already a row in this tab → bring it to top, pulse it.
+  // Case 1: this ID is already a row in this tab → move it to top, pulse.
   const existingIdx = ts.rows.findIndex(r => r.id === id);
   if (existingIdx >= 0) {
     const existing = ts.rows[existingIdx];
@@ -2940,8 +3207,6 @@ async function handleScannedId(tabName, id) {
     ts.rows.unshift(existing);
     await persistTabRows(tabName);
     renderTab(tabName);
-    alert(`${id} is already in this tab — moved to the top for editing.`);
-    // Apply pulse animation after re-render
     setTimeout(() => {
       const tr = document.querySelector(`#${tabName}Body tr[data-uid="${existing.uid}"]`);
       if (tr) {
@@ -2953,15 +3218,13 @@ async function handleScannedId(tabName, id) {
     return;
   }
 
-  // Case 2: fetch existing inventory record for this ID.
+  // Case 2: fetch existing inventory record for this ID
   let record = null;
   try {
     const r = await fetch('/api/items/' + encodeURIComponent(id), { cache: 'no-store' });
     if (r.ok) record = await r.json();
   } catch (e) { console.warn('inventory fetch failed:', e); }
 
-  // record may be the full registry entry OR the backend's wrapped {ok, record} shape
-  // OR the value field directly. Be liberal in what we accept.
   let lines = [], w_mm = null, h_mm = null;
   if (record) {
     const rec = record.record || record;
@@ -2971,7 +3234,6 @@ async function handleScannedId(tabName, id) {
       if (typeof rec.h_mm === 'number') h_mm = rec.h_mm;
     }
   }
-  // Also check our own local registry (fallback if backend didn't have it)
   if (lines.length === 0 && state.registry[id]) {
     const local = state.registry[id];
     if (Array.isArray(local.lines)) lines = local.lines;
@@ -2979,7 +3241,6 @@ async function handleScannedId(tabName, id) {
     if (typeof local.h_mm === 'number' && h_mm === null) h_mm = local.h_mm;
   }
 
-  // Pre-fill the new row from whatever data we found
   await addRow(tabName, {
     preserveId: id,
     isReprint: true,
@@ -2988,12 +3249,11 @@ async function handleScannedId(tabName, id) {
     line3: lines[2] || '',
     qr: true,
     copies: 1,
-    w: w_mm,         // null falls back to format default in addRow
+    w: w_mm,
     h: h_mm,
     formatName: 'custom',
   });
 
-  // Apply pulse to the newly-added row (it's at index 0)
   setTimeout(() => {
     const tr = document.querySelector(`#${tabName}Body tr:first-child`);
     if (tr) {
@@ -3444,24 +3704,25 @@ function setupListeners() {
     renderAll();
   });
 
-  // Slice 5: scan modal close + manual-ID fallback
-  if (el('scanCancelBtn')) el('scanCancelBtn').addEventListener('click', closeReprintScan);
-  if (el('scanManualBtn')) el('scanManualBtn').addEventListener('click', () => {
-    const tab = _scan.tabName;
-    closeReprintScan();
-    openManualIdModal(tab);
-  });
-  if (el('manualCancelBtn')) el('manualCancelBtn').addEventListener('click', closeManualIdModal);
+  // Slice 5: inline scan card buttons (close, manual entry, manual submit, etc.)
+  if (el('scanCloseBtn'))    el('scanCloseBtn').addEventListener('click', closeReprintScan);
+  if (el('manualEntryBtn'))  el('manualEntryBtn').addEventListener('click', openManualEntry);
+  if (el('manualCloseBtn'))  el('manualCloseBtn').addEventListener('click', closeReprintScan);
+  if (el('manualBackBtn'))   el('manualBackBtn').addEventListener('click', backToScanFromManual);
   if (el('manualSubmitBtn')) el('manualSubmitBtn').addEventListener('click', submitManualId);
-  if (el('manualIdInput')) el('manualIdInput').addEventListener('keydown', e => {
+  if (el('manualIdInput'))   el('manualIdInput').addEventListener('keydown', e => {
     if (e.key === 'Enter') submitManualId();
   });
-  // Click outside the modal-inner closes the modal
-  if (el('scanModal')) el('scanModal').addEventListener('click', e => {
-    if (e.target === el('scanModal')) closeReprintScan();
-  });
-  if (el('manualIdModal')) el('manualIdModal').addEventListener('click', e => {
-    if (e.target === el('manualIdModal')) closeManualIdModal();
+  // ESC key closes scan card if open
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      const card = el('scanCard');
+      const manual = el('manualCard');
+      if ((card && card.style.display !== 'none') ||
+          (manual && manual.style.display !== 'none')) {
+        closeReprintScan();
+      }
+    }
   });
 }
 
