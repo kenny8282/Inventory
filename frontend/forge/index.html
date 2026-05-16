@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Gridfinity Label Forge</title>
+<title>Label Forge</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Archivo:wght@500;700;800;900&display=swap" rel="stylesheet">
@@ -27,6 +27,7 @@
     --muted: #6b6862;
     --grid: rgba(22,22,22,0.05);
     --row-alt: #f5f2e9;
+    --green: #1a5d1a;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body {
@@ -111,6 +112,20 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  /* Slice 5b: tape-color chip — shows tape size with the loaded cartridge's
+     background and ink colors as a tiny preview. */
+  .tape-chip {
+    display: inline-block;
+    padding: 2px 8px;
+    border: 1px solid var(--ink);
+    border-radius: 2px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    vertical-align: middle;
+    line-height: 1.1;
   }
   .printer-status .printer-refresh {
     background: none;
@@ -1101,7 +1116,7 @@
   <header>
     <a href="/" class="home-link">← Home</a>
     <h1>
-      <a href="/">GRIDFINITY <span class="accent">//</span> LABEL FORGE</a>
+      <a href="/">LABEL <span class="accent">//</span> FORGE</a>
       <small>BATCH LABEL MAKER · UNIQUE-ID INVENTORY · v1 SCHEMA</small>
     </h1>
     <div class="meta">
@@ -3747,23 +3762,45 @@ function updateTapeStatusHint() {
   // No "preview Nmm" suffix — the dropdown itself shows the override value.
 }
 
+/* Slice 5b: resolve backend's color strings to a TAPE_COLORS key. Brother's
+   ptouch-print reports raw color names ("white", "yellow", "black", etc.).
+   We pair the tape color and text color to find a known combo in our palette;
+   if no exact match, fall back to white-black. */
+function resolveTapeColorKey(tapeColor, textColor) {
+  const t = (tapeColor || '').toLowerCase().trim();
+  const ti = (textColor || '').toLowerCase().trim();
+  if (!t) return 'white-black';
+  // Try exact tape-text combo
+  const k1 = `${t}-${ti}`;
+  if (TAPE_COLORS[k1]) return k1;
+  // Fall back to any combo starting with this tape color
+  const partial = Object.keys(TAPE_COLORS).find(k => k.startsWith(t + '-'));
+  if (partial) return partial;
+  return 'white-black';
+}
+
+/* Render the tape-size + color swatch as HTML for the status strip. */
+function renderTapeChipHtml(d) {
+  const sizeStr = d.tape_width_mm ? `${d.tape_width_mm}mm`
+                : d.tape_width_px ? `${d.tape_width_px}px`
+                : 'Ready';
+  const key = resolveTapeColorKey(d.tape_color, d.text_color);
+  const c = TAPE_COLORS[key] || TAPE_COLORS['white-black'];
+  // Plain escape — sizeStr is built locally so no untrusted content, but be safe.
+  const safe = String(sizeStr).replace(/[&<>"]/g, ch =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+  return `<span class="tape-chip" style="background:${c.tape};color:${c.ink};">${safe}</span>`;
+}
+
 function renderPrinterStatusText(d) {
   const dot = el('printerDot'); const text = el('printerText');
   if (!dot || !text) return;
   if (d.connected) {
     dot.className = 'dot ok';
-    // Minimal: just tape size. Model name + verbose details removed (cluttered mobile).
-    if (d.tape_width_mm) {
-      text.textContent = `${d.tape_width_mm}mm`;
-    } else if (d.tape_width_px) {
-      text.textContent = `${d.tape_width_px}px`;
-    } else {
-      text.textContent = 'Ready';
-    }
+    text.innerHTML = renderTapeChipHtml(d);
   } else {
     dot.className = 'dot err';
     // Short fixed string — no hints, no raw error dumps, no PLite tips.
-    // (Those are still surfaced in the print-attempt error dialog if the user tries.)
     text.textContent = 'Not connected';
   }
 }

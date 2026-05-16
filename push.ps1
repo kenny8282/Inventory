@@ -1,4 +1,4 @@
-# push.ps1 — sync files from OneDrive working folder to the git repo, commit, push.
+# push.ps1 â€” sync files from OneDrive working folder to the git repo, commit, push.
 # Usage:
 #   .\push.ps1 -Message "v1.11.0: my change"
 #   .\push.ps1 -Message "..." -DryRun        (preview without committing)
@@ -14,7 +14,7 @@ $ErrorActionPreference = 'Stop'
 
 # Source = OneDrive working folder (where files land from Downloads).
 # Repo   = git working tree (this script's folder).
-$src  = "C:\Users\kelgi\OneDrive\Projects\Gridfinity"
+$src  = "$env:USERPROFILE\OneDrive\Projects\Gridfinity"
 $repo = $PSScriptRoot
 
 if (-not (Test-Path $src)) {
