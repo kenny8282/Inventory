@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.16.0"  # Visual polish (green dot, tape color chip), name rename, hostname → inv.local
+APP_VERSION = "1.17.0"  # Slice 6: portable backup/restore (UI + optional USB drive destination)
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
@@ -222,6 +222,264 @@ def reset_all():
         if p.exists():
             p.unlink()
     return jsonify({"ok": True, "reset": True})
+
+
+# ------------------------------------------------------------------
+# Slice 6: Backup & Restore — full-state portable snapshot
+# ------------------------------------------------------------------
+# The /api/system/backup endpoint bundles everything in DATA_DIR into a single
+# JSON file. /api/system/restore accepts an uploaded backup and MERGES it
+# (only adding IDs/items/presets not currently present — current state wins).
+# An optional /api/system/backup-to-drive writes the same payload to a USB
+# drive mounted at /mnt/backup, and /api/system/backup-drive-status tells the
+# UI whether that destination is available.
+
+BACKUP_DRIVE_PATH = "/mnt/backup"
+BACKUP_SCHEMA = "gridfinity-backup/v1"
+
+# Keys that participate in backup/restore. Order matters only for readability.
+_BACKUP_KEYS = [
+    "gflf:registry",       # the inventory items keyed by ID — the big one
+    "gflf:used",           # set of issued IDs
+    "gflf:tape_presets",   # user-saved label format presets (Label Maker)
+    "gflf:sheet_presets",  # user-saved label format presets (Printer)
+    "gflf:config",         # QR mode, URL prefix, format defaults, etc.
+    "gflf:maker_rows",     # working queue rows (Label Maker tab)
+    "gflf:printer_rows",   # working queue rows (Printer tab)
+]
+
+
+def _build_backup_payload():
+    """Returns a dict suitable for json.dumps — the full backup."""
+    from datetime import datetime, timezone
+    data = {}
+    for key in _BACKUP_KEYS:
+        raw = _read_file(key)
+        if raw is None:
+            continue
+        try:
+            data[key] = json.loads(raw)
+        except Exception:
+            # If a file is corrupt, include the raw text so the user can still
+            # recover something rather than silently dropping it.
+            data[key] = {"__raw__": raw}
+    return {
+        "schema": BACKUP_SCHEMA,
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "hostname": os.uname().nodename if hasattr(os, "uname") else "unknown",
+        "app_version": APP_VERSION,
+        "data": data,
+    }
+
+
+def _drive_status():
+    """Returns whether /mnt/backup is mounted and how much free space it has."""
+    p = Path(BACKUP_DRIVE_PATH)
+    try:
+        # mountpoint check: the parent's st_dev differs from the directory's st_dev
+        # when the directory IS a mountpoint. Falls back gracefully if /mnt/backup
+        # doesn't exist at all.
+        if not p.exists():
+            return {"mounted": False, "reason": "not_present"}
+        parent_dev = p.parent.stat().st_dev
+        own_dev = p.stat().st_dev
+        if parent_dev == own_dev:
+            return {"mounted": False, "reason": "not_mounted"}
+        # Mounted — get free space
+        st = os.statvfs(p)
+        free = st.f_bavail * st.f_frsize
+        total = st.f_blocks * st.f_frsize
+        return {
+            "mounted": True,
+            "path": str(p),
+            "free_bytes": free,
+            "total_bytes": total,
+        }
+    except Exception as e:
+        return {"mounted": False, "reason": f"error: {e}"}
+
+
+@app.route("/api/system/backup", methods=["GET"])
+def system_backup():
+    """Return a full-state backup as a JSON download."""
+    from datetime import datetime
+    payload = _build_backup_payload()
+    body = json.dumps(payload, indent=2, sort_keys=False)
+    # Filename includes hostname and date for easy disambiguation when the user
+    # has multiple Pis or accumulates several backups in one folder.
+    host = payload.get("hostname", "inv")
+    ts = datetime.now().strftime("%Y-%m-%d_%H%M")
+    filename = f"{host}-backup-{ts}.json"
+    resp = app.response_class(body, mimetype="application/json")
+    resp.headers["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return resp
+
+
+@app.route("/api/system/backup-drive-status", methods=["GET"])
+def system_backup_drive_status():
+    """Tells the UI whether a USB backup drive is available."""
+    return jsonify(_drive_status())
+
+
+@app.route("/api/system/backup-to-drive", methods=["POST"])
+def system_backup_to_drive():
+    """Write a full-state backup file to the USB drive at /mnt/backup."""
+    from datetime import datetime
+    status = _drive_status()
+    if not status.get("mounted"):
+        return jsonify({"ok": False, "error": "no_drive",
+                        "detail": f"USB backup drive not mounted at {BACKUP_DRIVE_PATH}",
+                        "drive": status}), 400
+
+    payload = _build_backup_payload()
+    body = json.dumps(payload, indent=2, sort_keys=False)
+    host = payload.get("hostname", "inv")
+    ts = datetime.now().strftime("%Y-%m-%d_%H%M")
+    filename = f"{host}-backup-{ts}.json"
+    out = Path(BACKUP_DRIVE_PATH) / filename
+
+    # Write atomically — temp file beside the target then rename.
+    tmp = tempfile.NamedTemporaryFile(
+        mode="w", delete=False,
+        dir=str(out.parent),
+        prefix=filename + ".",
+        suffix=".tmp",
+    )
+    try:
+        tmp.write(body)
+        tmp.flush()
+        os.fsync(tmp.fileno())
+        tmp.close()
+        os.replace(tmp.name, out)
+    except Exception as e:
+        try:
+            tmp.close(); os.unlink(tmp.name)
+        except Exception:
+            pass
+        return jsonify({"ok": False, "error": "write_failed", "detail": str(e)}), 500
+
+    return jsonify({"ok": True, "path": str(out), "size_bytes": len(body), "filename": filename})
+
+
+@app.route("/api/system/restore", methods=["POST"])
+def system_restore():
+    """Merge a backup file's contents into current state. Current state wins
+    on any conflict (per Slice 6 spec: 'only restore IDs/items not currently
+    present'). Accepts both:
+      - gridfinity-backup/v1   (full backup; restores registry+used+presets)
+      - gridfinity-inventory/v1 (inventory-only legacy export; restores registry+used)
+    """
+    data = request.get_json(silent=True)
+    if not data:
+        abort(400, description="no JSON body")
+
+    schema = data.get("schema", "")
+    summary = {"added_items": 0, "skipped_items": 0,
+               "added_presets": 0, "skipped_presets": 0,
+               "schema": schema}
+
+    # ---- Load current state ----
+    try:
+        registry = json.loads(_read_file("gflf:registry") or "{}")
+    except Exception:
+        registry = {}
+    try:
+        used = set(json.loads(_read_file("gflf:used") or "[]"))
+    except Exception:
+        used = set()
+    try:
+        tape_presets = json.loads(_read_file("gflf:tape_presets") or "[]")
+    except Exception:
+        tape_presets = []
+    try:
+        sheet_presets = json.loads(_read_file("gflf:sheet_presets") or "[]")
+    except Exception:
+        sheet_presets = []
+
+    # ---- Determine what items/presets the backup brings ----
+    incoming_items = []
+    incoming_used = []
+    incoming_tape_presets = []
+    incoming_sheet_presets = []
+
+    if schema.startswith("gridfinity-backup/"):
+        # Full backup format: data nested under data.<key>
+        d = data.get("data") or {}
+        reg_in = d.get("gflf:registry") or {}
+        if isinstance(reg_in, dict):
+            incoming_items = list(reg_in.values())
+        used_in = d.get("gflf:used") or []
+        if isinstance(used_in, list):
+            incoming_used = used_in
+        tp_in = d.get("gflf:tape_presets") or []
+        if isinstance(tp_in, list):
+            incoming_tape_presets = tp_in
+        sp_in = d.get("gflf:sheet_presets") or []
+        if isinstance(sp_in, list):
+            incoming_sheet_presets = sp_in
+    elif schema.startswith("gridfinity-inventory/"):
+        # Legacy inventory-export format: items[] at the top level
+        items = data.get("items") or []
+        if not isinstance(items, list):
+            abort(400, description="items must be a list")
+        incoming_items = items
+    else:
+        abort(400, description="unsupported backup schema; expected gridfinity-backup/* or gridfinity-inventory/*")
+
+    # ---- Merge items (registry + used) ----
+    for it in incoming_items:
+        if not isinstance(it, dict):
+            continue
+        rid = it.get("id")
+        if not rid:
+            continue
+        if rid in registry:
+            summary["skipped_items"] += 1
+            continue
+        registry[rid] = it
+        used.add(rid)
+        summary["added_items"] += 1
+
+    # Also seed used IDs from the backup that aren't already present.
+    # (Catches edge cases where a backup has IDs in used[] but missing from the
+    # registry — preserve the reservation so we don't recycle the ID.)
+    for rid in incoming_used:
+        if isinstance(rid, str) and rid not in used:
+            used.add(rid)
+
+    # ---- Merge presets (match by name; current wins) ----
+    def merge_presets(current, incoming):
+        existing_names = {p.get("name") for p in current if isinstance(p, dict)}
+        added = 0
+        skipped = 0
+        for p in incoming:
+            if not isinstance(p, dict):
+                continue
+            name = p.get("name")
+            if not name:
+                continue
+            if name in existing_names:
+                skipped += 1
+                continue
+            current.append(p)
+            existing_names.add(name)
+            added += 1
+        return added, skipped
+
+    a, s = merge_presets(tape_presets, incoming_tape_presets)
+    summary["added_presets"] += a
+    summary["skipped_presets"] += s
+    a, s = merge_presets(sheet_presets, incoming_sheet_presets)
+    summary["added_presets"] += a
+    summary["skipped_presets"] += s
+
+    # ---- Write everything back atomically ----
+    _write_file("gflf:registry", json.dumps(registry))
+    _write_file("gflf:used", json.dumps(sorted(used)))
+    _write_file("gflf:tape_presets", json.dumps(tape_presets))
+    _write_file("gflf:sheet_presets", json.dumps(sheet_presets))
+
+    return jsonify({"ok": True, **summary})
 
 
 # ------------------------------------------------------------------

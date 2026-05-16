@@ -1529,11 +1529,33 @@
       </div>
     </div>
 
+    <!-- BACKUP & RESTORE — Slice 6 -->
+    <div class="panel">
+      <h2><span>Backup &amp; Restore</span><span class="num">⤓⤒</span></h2>
+      <div class="hint" style="margin-bottom: 10px;">
+        Save a full snapshot of your inventory (items, used IDs, label presets). Restore from a backup later to recover after an SD card failure or a fresh install.
+      </div>
+      <div class="btn-row">
+        <button id="backupDownloadBtn" class="secondary">⤓ Download Backup</button>
+        <button id="backupToDriveBtn" class="secondary" disabled title="Plug in a USB drive to enable">⤓ Save to USB Drive</button>
+      </div>
+      <div class="hint" id="backupDriveStatus" style="margin-top:8px;font-size:11px;">
+        Checking for backup drive…
+      </div>
+      <div class="btn-row" style="margin-top: 12px;">
+        <button id="restoreBtn" class="secondary">⤒ Restore from Backup</button>
+        <input type="file" id="restoreFile" accept="application/json,.json" style="display:none;" />
+      </div>
+      <div class="alert" style="margin-top: 10px;">
+        <b>Restore is additive.</b> Only items not already in your current registry will be added — your existing data is never overwritten or lost.
+      </div>
+    </div>
+
     <!-- REGISTRY & DATA -->
     <div class="panel">
       <h2><span>Registry &amp; Data</span><span class="num">↓↑</span></h2>
       <div class="hint" style="margin-bottom: 10px;">
-        Every issued label is logged to a v1 inventory file. Export now, import into the inventory app — same schema both ways.
+        Inventory-only export for moving items between the forge and inventory apps. For full system backups, use <b>Backup &amp; Restore</b> above.
       </div>
       <div class="btn-row">
         <button id="exportJsonBtn" class="secondary">⤓ Export JSON</button>
@@ -1916,6 +1938,10 @@ function switchTab(tabName) {
   // Printer status strip only relevant for Label Maker
   const ps = el('printerStatus');
   if (ps) ps.style.display = (tabName === 'maker') ? '' : 'none';
+  // Slice 6: refresh backup drive availability when Options tab opens
+  if (tabName === 'registry' && typeof refreshBackupDriveStatus === 'function') {
+    refreshBackupDriveStatus();
+  }
   updateStickyPrint();
   schedulePreview();
   persistConfig();
@@ -2712,6 +2738,153 @@ async function importJson(file) {
     alert(`Import complete.\nAdded: ${added}\nSkipped (already exist): ${skipped}`);
     updateMeta();
   } catch (e) { alert('Import failed: ' + e.message); }
+}
+
+/* ============================================================================
+   SLICE 6 — Backup & Restore
+   ============================================================================
+   downloadBackup       — GET /api/system/backup, save to browser downloads
+   backupToDrive        — POST /api/system/backup-to-drive (writes to /mnt/backup)
+   restoreFromBackup    — POST /api/system/restore (merges into current state)
+   refreshBackupDriveStatus — GET /api/system/backup-drive-status, enable/disable
+                              the "Save to USB Drive" button.
+   Backend already enforces merge semantics; the frontend just needs to call
+   the endpoints and reload local state on success.
+*/
+
+async function downloadBackup() {
+  const btn = el('backupDownloadBtn');
+  const original = btn ? btn.textContent : null;
+  if (btn) { btn.textContent = '⌛ Building…'; btn.disabled = true; }
+  try {
+    const r = await fetch('/api/system/backup', { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const blob = await r.blob();
+    // Extract filename from Content-Disposition if present, else fall back.
+    let filename = 'inv-backup.json';
+    const cd = r.headers.get('Content-Disposition') || '';
+    const m = cd.match(/filename="([^"]+)"/);
+    if (m) filename = m[1];
+    downloadBlob(blob, filename);
+  } catch (e) {
+    alert('Backup failed: ' + e.message);
+  } finally {
+    if (btn) { btn.textContent = original; btn.disabled = false; }
+  }
+}
+
+async function backupToDrive() {
+  const btn = el('backupToDriveBtn');
+  const original = btn ? btn.textContent : null;
+  if (btn) { btn.textContent = '⌛ Writing…'; btn.disabled = true; }
+  try {
+    const r = await fetch('/api/system/backup-to-drive', { method: 'POST' });
+    const j = await r.json();
+    if (!j.ok) {
+      alert('Save to drive failed:\n' + (j.detail || j.error || 'unknown'));
+    } else {
+      alert(`Backup saved to drive:\n${j.filename}\n${(j.size_bytes/1024).toFixed(1)} KB`);
+    }
+  } catch (e) {
+    alert('Save to drive failed: ' + e.message);
+  } finally {
+    if (btn) { btn.textContent = original; btn.disabled = false; }
+    refreshBackupDriveStatus();   // free-space changed
+  }
+}
+
+async function restoreFromBackup(file) {
+  if (!file) return;
+  let data;
+  try {
+    const text = await file.text();
+    data = JSON.parse(text);
+  } catch (e) {
+    alert('Restore failed: file is not valid JSON.\n' + e.message);
+    return;
+  }
+  if (!data || !data.schema) {
+    alert('Restore failed: file is missing the schema field. Pick a backup or inventory file from this app.');
+    return;
+  }
+  // Show the user a confirm with a preview of what they're about to restore
+  let preview = '';
+  if (data.schema.startsWith('gridfinity-backup/')) {
+    const itemCount = data.data && data.data['gflf:registry']
+      ? Object.keys(data.data['gflf:registry']).length : 0;
+    const tapePresets = (data.data && Array.isArray(data.data['gflf:tape_presets']))
+      ? data.data['gflf:tape_presets'].length : 0;
+    const sheetPresets = (data.data && Array.isArray(data.data['gflf:sheet_presets']))
+      ? data.data['gflf:sheet_presets'].length : 0;
+    preview = `Full backup from ${data.hostname || 'unknown host'} (${data.exported_at || 'unknown date'})\n` +
+              `• ${itemCount} inventory items\n` +
+              `• ${tapePresets} tape presets, ${sheetPresets} sheet presets`;
+  } else if (data.schema.startsWith('gridfinity-inventory/')) {
+    const n = Array.isArray(data.items) ? data.items.length : 0;
+    preview = `Inventory export (legacy format)\n• ${n} items`;
+  } else {
+    alert(`Restore failed: unsupported schema "${data.schema}".`);
+    return;
+  }
+  if (!confirm(`Restore from this backup?\n\n${preview}\n\nOnly items NOT currently in your registry will be added. Your existing data is never overwritten.`)) {
+    return;
+  }
+
+  const btn = el('restoreBtn');
+  const original = btn ? btn.textContent : null;
+  if (btn) { btn.textContent = '⌛ Restoring…'; btn.disabled = true; }
+  try {
+    const r = await fetch('/api/system/restore', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const j = await r.json();
+    if (!j.ok) {
+      alert('Restore failed:\n' + (j.error || JSON.stringify(j)));
+      return;
+    }
+    const lines = [
+      'Restore complete.',
+      `• Items added: ${j.added_items}`,
+      `• Items skipped (already present): ${j.skipped_items}`,
+    ];
+    if (j.added_presets || j.skipped_presets) {
+      lines.push(`• Presets added: ${j.added_presets}, skipped: ${j.skipped_presets}`);
+    }
+    alert(lines.join('\n'));
+    // Reload local state from backend so the UI reflects the changes
+    await loadAll();
+    renderAll();
+  } catch (e) {
+    alert('Restore failed: ' + e.message);
+  } finally {
+    if (btn) { btn.textContent = original; btn.disabled = false; }
+  }
+}
+
+async function refreshBackupDriveStatus() {
+  const statusEl = el('backupDriveStatus');
+  const btn = el('backupToDriveBtn');
+  if (!statusEl || !btn) return;
+  try {
+    const r = await fetch('/api/system/backup-drive-status', { cache: 'no-store' });
+    const j = await r.json();
+    if (j.mounted) {
+      const freeGB = (j.free_bytes / 1024 / 1024 / 1024).toFixed(1);
+      const totalGB = (j.total_bytes / 1024 / 1024 / 1024).toFixed(1);
+      statusEl.innerHTML = `<span style="color:#1a5d1a;">●</span> USB drive available at ${escapeHtml(j.path)} — ${freeGB} GB free of ${totalGB} GB`;
+      btn.disabled = false;
+      btn.title = 'Save a backup file to the USB drive at ' + j.path;
+    } else {
+      statusEl.innerHTML = `<span style="color:var(--muted);">○</span> No USB drive mounted. Plug in a drive (formatted ext4 with label <code>backup-ssd</code>) to enable Save to Drive.`;
+      btn.disabled = true;
+      btn.title = 'Plug in a USB drive to enable';
+    }
+  } catch (e) {
+    statusEl.textContent = 'Could not check for USB drive: ' + e.message;
+    btn.disabled = true;
+  }
 }
 
 /* ---- TAPE PRINTING (Brother PT-P700 via Pi backend) ---- */
@@ -3707,6 +3880,17 @@ function setupListeners() {
     if (e.target.files && e.target.files[0]) importJson(e.target.files[0]);
     e.target.value = '';
   });
+
+  // Slice 6: Backup & Restore
+  el('backupDownloadBtn').addEventListener('click', downloadBackup);
+  el('backupToDriveBtn').addEventListener('click', backupToDrive);
+  el('restoreBtn').addEventListener('click', () => el('restoreFile').click());
+  el('restoreFile').addEventListener('change', e => {
+    if (e.target.files && e.target.files[0]) restoreFromBackup(e.target.files[0]);
+    e.target.value = '';
+  });
+  // Check drive availability now and again whenever the Options tab opens
+  refreshBackupDriveStatus();
   el('resetBtn').addEventListener('click', async () => {
     if (!confirm('Reset EVERYTHING — all rows, all issued IDs, all registry data, all presets. Continue?')) return;
     if (!confirm('Really? This cannot be undone.')) return;
