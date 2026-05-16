@@ -277,6 +277,51 @@ EOF
 chmod 644 "$CRON_FILE"
 ok "Daily update-check cron installed: $CRON_FILE"
 
+# ---- Hostname enforcement -------------------------------------------------
+# Default hostname for fresh installs is "inv" (so the Pi is reachable at
+# inv.local). If a different name is already set, we leave it alone — the
+# operator is presumed to have chosen it deliberately. The only case we fix
+# automatically is the legacy "gridfinity" hostname from older SD images.
+info "Hostname check"
+CURRENT_HOSTNAME=$(hostname)
+DESIRED_HOSTNAME=inv
+NEEDS_HOSTNAME_CHANGE=0
+if [ "$CURRENT_HOSTNAME" = "gridfinity" ]; then
+  warn "Detected legacy hostname 'gridfinity' — renaming to '$DESIRED_HOSTNAME'"
+  NEEDS_HOSTNAME_CHANGE=1
+elif [ "$CURRENT_HOSTNAME" = "raspberrypi" ] || [ -z "$CURRENT_HOSTNAME" ]; then
+  warn "Detected default hostname '$CURRENT_HOSTNAME' — renaming to '$DESIRED_HOSTNAME'"
+  NEEDS_HOSTNAME_CHANGE=1
+else
+  ok "Hostname is '$CURRENT_HOSTNAME' — keeping it"
+fi
+
+if [ "$NEEDS_HOSTNAME_CHANGE" = "1" ]; then
+  # Disable cloud-init's hostname management so our changes persist across reboots.
+  # The /etc/cloud/cloud.cfg.d/ override loads after the Pi defaults (lexical sort).
+  if [ -d /etc/cloud/cloud.cfg.d ]; then
+    cat > /etc/cloud/cloud.cfg.d/99-zzz-hostname.cfg <<EOF
+# Set by install.sh — prevents cloud-init from rewriting hostname/hosts on boot.
+preserve_hostname: true
+manage_etc_hosts: false
+EOF
+    ok "cloud-init hostname management disabled"
+  fi
+  hostnamectl set-hostname "$DESIRED_HOSTNAME"
+  echo "$DESIRED_HOSTNAME" > /etc/hostname
+  # Replace any whole-word match of the old hostname in /etc/hosts.
+  sed -i "s/\\b${CURRENT_HOSTNAME}\\b/${DESIRED_HOSTNAME}/g" /etc/hosts
+  # Also make sure the standard 127.0.1.1 entry exists.
+  if ! grep -qE '^127\.0\.1\.1\s' /etc/hosts; then
+    echo "127.0.1.1 ${DESIRED_HOSTNAME} ${DESIRED_HOSTNAME}" >> /etc/hosts
+  fi
+  systemctl restart avahi-daemon 2>/dev/null || true
+  ok "Hostname set to '$DESIRED_HOSTNAME' (avahi reloaded)"
+  # Update the HOSTNAME variable so subsequent steps (cert generation below)
+  # use the new name.
+  HOSTNAME="$DESIRED_HOSTNAME"
+fi
+
 # ---- TLS cert (self-signed, 10-year) --------------------------------------
 info "Setting up TLS certificate"
 CERT_DIR=/etc/ssl/gridfinity
@@ -284,13 +329,14 @@ mkdir -p "$CERT_DIR"
 if [ -f "$CERT_DIR/gridfinity.crt" ] && [ -f "$CERT_DIR/gridfinity.key" ]; then
   ok "Existing cert at $CERT_DIR â€” keeping it"
 else
-  # Generate cert valid for both .local and the Pi's hostname
+  # Generate cert valid for .local, the Pi's hostname, and the legacy
+  # gridfinity.local name so old bookmarks still verify cleanly.
   HOSTNAME=$(hostname)
   openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
     -keyout "$CERT_DIR/gridfinity.key" \
     -out    "$CERT_DIR/gridfinity.crt" \
     -subj "/CN=${HOSTNAME}.local" \
-    -addext "subjectAltName=DNS:${HOSTNAME}.local,DNS:${HOSTNAME},DNS:gridfinity.local,IP:127.0.0.1" \
+    -addext "subjectAltName=DNS:${HOSTNAME}.local,DNS:${HOSTNAME},DNS:inv.local,DNS:gridfinity.local,IP:127.0.0.1" \
     2>/dev/null
   chmod 600 "$CERT_DIR/gridfinity.key"
   chmod 644 "$CERT_DIR/gridfinity.crt"

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # ============================================================================
-#  WiFi AP-mode bootstrap installer for Gridfinity
+#  WiFi AP-mode bootstrap installer
 #  ----------------------------------------------------------------------------
 #  Installs and configures comitup, which makes the Pi broadcast an open WiFi
-#  hotspot called "Gridfinity-XXXX" (last 4 of MAC) when:
-#    - The Pi has never been configured (no wifi profiles stored) â€” AP mode
+#  hotspot called "Inv-Setup" when:
+#    - The Pi has never been configured (no wifi profiles stored) — AP mode
 #      immediately, no wait
 #    - A configured Pi boots and can't find any of its known WiFi networks for
-#      60 seconds â€” falls back to AP mode so user can reconfigure
+#      60 seconds — falls back to AP mode so user can reconfigure
 #
 #  Once a user connects through comitup's captive portal and provides
 #  credentials, comitup switches the Pi to client mode. AP mode only returns
@@ -70,7 +70,7 @@ info "Configuring comitup"
 # State machine timings:
 #   start_state         - HOTSPOT means "AP mode if no configured wifi"
 #                         CONNECTING means "try wifi first, then AP after timeout"
-#   For Gridfinity: we want HOTSPOT (skip wait) when no profile, but
+#   For our case: we want HOTSPOT (skip wait) when no profile, but
 #   CONNECTING (60s timeout) when profiles exist. Comitup's default behavior
 #   matches this: it always tries existing profiles first, falling back to
 #   HOTSPOT if none connect within ~60s.
@@ -80,14 +80,14 @@ if [ -f /etc/comitup.conf ]; then
 fi
 
 cat > /etc/comitup.conf <<'EOF'
-# Gridfinity comitup configuration
+# comitup configuration
 # Edit this file to customize AP behavior; rerun comitup-cli if needed.
 
-# AP SSID. Plain "Gridfinity-Setup" - simple and friendly. Comitup's <nnn>
+# AP SSID. Plain "Inv-Setup" - simple and friendly. Comitup's <nnn>
 # suffix is supported (last 4 of MAC) but we omit it for simplicity.
 # If two Pis end up nearby in AP mode simultaneously, change one to
-# "Gridfinity-Setup-<nnn>" to disambiguate.
-ap_name: Gridfinity-Setup
+# "Inv-Setup-<nnn>" to disambiguate.
+ap_name: Inv-Setup
 
 # AP password: blank = open network (only on during setup, then disappears)
 ap_password:
