@@ -569,9 +569,9 @@
   table.items tbody tr.row-unprintable:nth-child(even) {
     background: rgba(200, 52, 26, 0.06);
   }
-  /* The disabled checkbox + Print button get a clear non-interactive look */
-  table.items tbody tr.row-unprintable .row-sel,
-  table.items tbody tr.row-unprintable .print-row-btn {
+  /* Per-row Print button is the only thing that goes disabled on a mismatch
+     (Slice 4: checkboxes stay interactive so users can duplicate/delete) */
+  table.items tbody tr.row-unprintable .print-row-btn[disabled] {
     cursor: not-allowed;
     opacity: 0.35;
   }
@@ -595,6 +595,106 @@
   }
   table.items td.color-cell select {
     font-size: 10.5px;
+  }
+
+  /* ============================================================================
+     SLICE 4 ADDITIONS — lean caret styling for in-table dropdowns,
+                          override widget in printer status strip
+     ============================================================================ */
+  /* Lean caret: small chevron inline next to text (not a wide white area on right).
+     We strip the native appearance and paint a tiny SVG caret near the right edge. */
+  table.items td.color-cell select,
+  table.items td.fmt-cell select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    padding-right: 14px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'><path d='M0 0l4 5 4-5z' fill='%23161616'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 3px center;
+    background-size: 7px 4px;
+  }
+  table.items td.color-cell select:focus,
+  table.items td.fmt-cell select:focus {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'><path d='M0 0l4 5 4-5z' fill='%23c8341a'/></svg>");
+  }
+
+  /* Manual tape-width override widget in the printer status strip */
+  .override-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 6px;
+  }
+  .override-sep { color: var(--muted); }
+  .override-sel {
+    width: auto !important;
+    padding: 2px 18px 2px 6px !important;
+    font-size: 11px !important;
+    background-color: var(--bg) !important;
+    border: 1px solid var(--rule) !important;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'><path d='M0 0l4 5 4-5z' fill='%23161616'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 4px center;
+    background-size: 7px 4px;
+  }
+
+  /* ============================================================================
+     SLICE 4 ADDITIONS — compact in-table selects, status override
+     ============================================================================ */
+  /* Lean look for in-table selects: native caret only, no extra padding for arrow.
+     Replaces the heavy default select chrome with a minimal inline-feel cell. */
+  table.items td.color-cell select,
+  table.items td.fmt-cell select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: none;
+    border: 1px solid transparent;
+    padding-right: 6px;          /* no extra room for a caret — the text fills the cell */
+    text-align: left;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+  }
+  table.items td.color-cell select:focus,
+  table.items td.fmt-cell select:focus {
+    border-color: var(--accent);
+    background: white;
+    outline: none;
+  }
+  /* Hover hint that the cell is interactive */
+  table.items td.color-cell:hover select,
+  table.items td.fmt-cell:hover select {
+    background: rgba(0,0,0,0.04);
+  }
+
+  /* Printer status strip — manual tape override widget */
+  .printer-status .override-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 6px;
+  }
+  .printer-status .override-sep {
+    color: var(--muted);
+    font-size: 12px;
+    opacity: 0.5;
+  }
+  .printer-status .override-sel {
+    width: auto;
+    padding: 3px 6px;
+    font-size: 11px;
+    background: var(--bg);
+    border: 1px solid var(--rule);
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+  }
+  .printer-status .override-sel:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
   }
 
   /* ============================================================================
@@ -838,6 +938,20 @@
     <span class="label">PRINTER:</span>
     <span id="printerText">checking…</span>
     <button class="printer-refresh" onclick="refreshPrinterStatus()" title="Refresh printer status">↻</button>
+    <!-- Slice 4: manual override for preview when no printer is connected.
+         Disabled (visually grayed) when a printer IS connected — cartridge always wins. -->
+    <span class="override-wrap" id="overrideWrap" style="display:none;">
+      <span class="override-sep">·</span>
+      <span class="label" style="font-size:10px;">PREVIEW AS:</span>
+      <select id="tapeOverrideSel" class="override-sel">
+        <option value="">— off —</option>
+        <option value="6">6 mm</option>
+        <option value="9">9 mm</option>
+        <option value="12" selected>12 mm</option>
+        <option value="18">18 mm</option>
+        <option value="24">24 mm</option>
+      </select>
+    </span>
   </div>
 
   <!-- ============================================================ -->
@@ -850,60 +964,38 @@
       <!-- LEFT: config for tape -->
       <div>
 
-        <!-- TAPE OUTPUT -->
-        <div class="panel">
-          <h2><span>Tape Output</span><span class="num">TAPE</span></h2>
-          <div class="row">
-            <div class="field" style="margin-bottom: 0;">
-              <label>Tape width</label>
-              <select id="tapeWidthSel">
-                <option value="auto" selected>Auto (use printer)</option>
-                <option value="6">6 mm</option>
-                <option value="9">9 mm</option>
-                <option value="12">12 mm</option>
-                <option value="18">18 mm</option>
-                <option value="24">24 mm</option>
-              </select>
-            </div>
-            <div class="field" style="margin-bottom: 0;">
-              <label>Tape color (preview)</label>
-              <select id="tapeColorSel">
-                <option value="white-black" selected>White / Black</option>
-                <option value="yellow-black">Yellow / Black</option>
-                <option value="clear-black">Clear / Black</option>
-                <option value="red-white">Red / White</option>
-                <option value="red-black">Red / Black</option>
-                <option value="blue-white">Blue / White</option>
-                <option value="blue-black">Blue / Black</option>
-                <option value="green-white">Green / White</option>
-                <option value="green-black">Green / Black</option>
-                <option value="black-white">Black / White</option>
-                <option value="white-red">White / Red</option>
-                <option value="white-blue">White / Blue</option>
-              </select>
-            </div>
-          </div>
-          <div class="hint">
-            <b>Auto</b> uses the cartridge loaded in the printer. Pick a specific width to design when the printer is unplugged or to design for a different cartridge.
-            Tape color is preview-only — the printer prints whatever cassette is loaded.
-          </div>
-        </div>
-
-        <!-- LABEL FORMAT (Label Maker) — length only; height comes from tape width above -->
+        <!-- LABEL FORMAT (Label Maker) — W, H, Color for next row -->
         <div class="panel">
           <h2><span>Label Format</span><span class="num">NEW</span></h2>
           <div class="hint" style="margin-top:0;margin-bottom:8px;">
-            Sets the size of <b>new</b> labels you add below. Height matches the current tape width. Existing rows keep their dimensions and color (immutable after creation).
+            These are the defaults for <b>the next row</b> you add below. Existing rows keep their dimensions and color — change them in the table if you need to.
           </div>
           <div class="row">
             <div class="field" style="margin-bottom: 0;">
-              <label>Length (mm)</label>
-              <input type="number" id="makerW" step="0.1" min="6" value="40" />
+              <label>Width (mm)</label>
+              <input type="number" id="makerW" step="0.1" min="4" value="40" />
             </div>
             <div class="field" style="margin-bottom: 0;">
-              <label>Height (mm) — locked to tape</label>
-              <input type="number" id="makerH" step="0.1" min="4" value="12" readonly style="background:rgba(0,0,0,0.05); cursor:not-allowed;" />
+              <label>Height (mm)</label>
+              <input type="number" id="makerH" step="0.1" min="4" value="12" />
             </div>
+          </div>
+          <div class="field" style="margin-top: 8px; margin-bottom: 0;">
+            <label>Tape color</label>
+            <select id="makerColor">
+              <option value="white-black" selected>White / Black</option>
+              <option value="yellow-black">Yellow / Black</option>
+              <option value="clear-black">Clear / Black</option>
+              <option value="red-white">Red / White</option>
+              <option value="red-black">Red / Black</option>
+              <option value="blue-white">Blue / White</option>
+              <option value="blue-black">Blue / Black</option>
+              <option value="green-white">Green / White</option>
+              <option value="green-black">Green / Black</option>
+              <option value="black-white">Black / White</option>
+              <option value="white-red">White / Red</option>
+              <option value="white-blue">White / Blue</option>
+            </select>
           </div>
           <div class="row" style="margin-top: 8px;">
             <input type="text" id="makerPresetName" placeholder="Preset name (optional)" />
@@ -1267,10 +1359,11 @@ const state = {
 
   // LABEL MAKER tab
   maker: {
-    rows: [],                  // [{uid, id, line1, line2, line3, qr, copies, w, h, formatName, selected, created}]
+    rows: [],                       // [{uid, id, line1, line2, line3, qr, copies, w, h, color, formatName, selected, created}]
     formatW: 40,
     formatH: 12,
-    presets: [],               // [{id, name, desc, w, h}]
+    formatColor: 'white-black',     // Slice 4: default tape color for new rows
+    presets: [],                    // [{id, name, desc, w, h}]
   },
 
   // PRINTER tab
@@ -1283,9 +1376,9 @@ const state = {
     pageMargin: 3, gapH: 1, gapV: 1, cutMarks: true,
   },
 
-  // Label Maker tape output (preview tinting + width override)
-  tapeWidthMm: 'auto',
-  tapeColor: 'white-black',
+  // Slice 4: manual tape-width override (preview only, used when no printer connected).
+  // '' (empty) means no override. When a printer IS connected, override is ignored.
+  tapeOverrideMm: '',
 };
 
 /* ---- ID GENERATION ---- */
@@ -1444,9 +1537,9 @@ async function persistConfig() {
       gapH: state.printer.gapH,
       gapV: state.printer.gapV,
       cutMarks: state.printer.cutMarks,
-      // tape
-      tapeWidthMm: state.tapeWidthMm,
-      tapeColor: state.tapeColor,
+      // tape (Slice 4)
+      tapeOverrideMm: state.tapeOverrideMm,
+      makerFormatColor: state.maker.formatColor,
     }));
   } catch(e){}
 }
@@ -1496,8 +1589,11 @@ async function loadAll() {
       if (cfg.gapH != null) state.printer.gapH = cfg.gapH;
       if (cfg.gapV != null) state.printer.gapV = cfg.gapV;
       if (cfg.cutMarks != null) state.printer.cutMarks = cfg.cutMarks;
-      if (cfg.tapeWidthMm) state.tapeWidthMm = cfg.tapeWidthMm;
-      if (cfg.tapeColor) state.tapeColor = cfg.tapeColor;
+      // Slice 4: tape override + maker default color (migrate old fields if present)
+      if (cfg.tapeOverrideMm != null) state.tapeOverrideMm = cfg.tapeOverrideMm;
+      else if (cfg.tapeWidthMm && cfg.tapeWidthMm !== 'auto') state.tapeOverrideMm = cfg.tapeWidthMm;
+      if (cfg.makerFormatColor) state.maker.formatColor = cfg.makerFormatColor;
+      else if (cfg.tapeColor) state.maker.formatColor = cfg.tapeColor;
     }
   } catch(e){}
 
@@ -1509,8 +1605,8 @@ function applyConfigToInputs() {
   // Maker
   if (el('makerW')) el('makerW').value = state.maker.formatW;
   if (el('makerH')) el('makerH').value = state.maker.formatH;
-  if (el('tapeWidthSel')) el('tapeWidthSel').value = state.tapeWidthMm;
-  if (el('tapeColorSel')) el('tapeColorSel').value = state.tapeColor;
+  if (el('makerColor')) el('makerColor').value = state.maker.formatColor;
+  if (el('tapeOverrideSel')) el('tapeOverrideSel').value = state.tapeOverrideMm || '';
   // Printer
   if (el('printerW')) el('printerW').value = state.printer.formatW;
   if (el('printerH')) el('printerH').value = state.printer.formatH;
@@ -1572,8 +1668,8 @@ async function addRow(tabName, opts = {}) {
   const id = await issueId();
   const w = opts.w != null ? opts.w : ts.formatW;
   const h = opts.h != null ? opts.h : ts.formatH;
-  // Maker rows get stamped with the current global tape color default; printer rows ignore color.
-  const color = (tabName === 'maker') ? (opts.color || state.tapeColor || 'white-black') : null;
+  // Maker rows get stamped with the per-tab Label Format default color; printer rows ignore color.
+  const color = (tabName === 'maker') ? (opts.color || state.maker.formatColor || 'white-black') : null;
   const row = {
     uid: uid(),
     id,
@@ -1846,24 +1942,25 @@ function renderTable(tabName) {
     return;
   }
 
-  // Printability check for Label Maker: a row is printable only if its h matches the
-  // currently-loaded cartridge (when one is connected). If no printer is connected,
-  // we can't compare — all rows are treated as "printable" but the print path will
-  // surface its own error.
-  const loadedCartridgeMm =
-    (tabName === 'maker' && _lastPrinterStatus && _lastPrinterStatus.connected)
-      ? (_lastPrinterStatus.tape_width_mm || null)
-      : null;
+  // Slice 4: a Maker row is "printable" if its h matches the active tape height
+  // (loaded cartridge if connected, else manual override if set, else no active height).
+  // Mismatch rows are visually tinted but their checkbox stays interactive — users
+  // can still duplicate/delete them. Preview and print paths filter them out.
+  const activeTapeH = (tabName === 'maker') ? getActiveTapeHeight() : null;
 
   ts.rows.forEach(row => {
     const tr = document.createElement('tr');
     tr.dataset.uid = row.uid;
 
-    // Compute printability for this row (Label Maker only)
-    const printable = (tabName !== 'maker') ? true :
-                      (loadedCartridgeMm === null ? true :
-                       Math.abs((row.h || 0) - loadedCartridgeMm) < 0.01);
-    if (!printable) tr.classList.add('row-unprintable');
+    // Compute "matches active tape" for this row (Label Maker only).
+    // If there's no active tape height (printer disconnected and no override),
+    // we treat all rows as "not currently printable" — they show tinted, can be
+    // selected for organizing, but won't appear in preview or print until a
+    // tape source becomes known.
+    const matchesTape = (tabName !== 'maker') ? true :
+                        (activeTapeH !== null &&
+                         Math.abs((row.h || 0) - activeTapeH) < 0.01);
+    if (tabName === 'maker' && !matchesTape) tr.classList.add('row-unprintable');
 
     // Determine which option is "selected" in the Format dropdown
     let fmtSelected = 'custom';
@@ -1877,7 +1974,7 @@ function renderTable(tabName) {
         `<option value="preset:${p.id}" ${fmtSelected==='preset:'+p.id?'selected':''}>${escapeHtml(p.name)} (${p.w}×${p.h})</option>`
       ).join('');
 
-    // Color cell (Label Maker only) — render dropdown of TAPE_COLORS
+    // Color cell (Label Maker only)
     let colorCellHtml = '';
     if (tabName === 'maker') {
       const colorOptions = Object.entries(TAPE_COLORS).map(([key, c]) =>
@@ -1886,14 +1983,16 @@ function renderTable(tabName) {
       colorCellHtml = `<td class="color-cell"><select class="color-sel">${colorOptions}</select></td>`;
     }
 
-    // Build the row HTML — note that selection checkbox + per-row Print are
-    // disabled when the row isn't printable on the loaded cartridge.
-    const selDisabled = !printable ? 'disabled' : '';
-    const selTitle = !printable
-      ? `title="Loaded tape is ${loadedCartridgeMm}mm but this label needs ${row.h}mm — load matching tape to print"`
-      : '';
+    // Slice 4: checkboxes are ALWAYS enabled. Per-row Print button is disabled when
+    // the row doesn't match the active tape (or no active tape).
+    const printBtnDisabled = (tabName === 'maker' && !matchesTape) ? 'disabled' : '';
+    const printBtnTitle = (tabName === 'maker' && !matchesTape)
+      ? (activeTapeH === null
+          ? `title="No active tape \u2014 connect printer or set Preview override"`
+          : `title="Active tape is ${activeTapeH}mm but this label needs ${row.h}mm"`)
+      : 'title="Print this row"';
     tr.innerHTML = `
-      <td><input type="checkbox" class="row-sel" ${row.selected && printable ? 'checked' : ''} ${selDisabled} ${selTitle} /></td>
+      <td><input type="checkbox" class="row-sel" ${row.selected ? 'checked' : ''} /></td>
       <td class="id-cell">${row.id || '...'}</td>
       <td><textarea class="line1" rows="1" placeholder="Primary">${escapeHtml(row.line1 || '')}</textarea></td>
       <td><textarea class="line2" rows="1" placeholder="Secondary">${escapeHtml(row.line2 || '')}</textarea></td>
@@ -1906,13 +2005,11 @@ function renderTable(tabName) {
       ${colorCellHtml}
       <td class="fmt-cell"><select class="fmt-sel">${fmtOptions}</select></td>
       <td class="actions">
-        <button class="print-row-btn" title="Print this row" ${!printable ? 'disabled' : ''}>⎙</button>
+        <button class="print-row-btn" ${printBtnTitle} ${printBtnDisabled}>⎙</button>
         <button class="dup-btn" title="Duplicate">⎘</button>
         <button class="del-btn" title="Delete">✕</button>
       </td>
     `;
-    // If row was selected but is no longer printable, clear its selected state in data
-    if (!printable && row.selected) row.selected = false;
     tb.appendChild(tr);
 
     // ---- Wire events ----
@@ -1921,7 +2018,6 @@ function renderTable(tabName) {
     tr.querySelector('.line2').addEventListener('input', onText('line2'));
     tr.querySelector('.line3').addEventListener('input', onText('line3'));
     tr.querySelector('.row-sel').addEventListener('change', e => {
-      if (e.target.disabled) { e.target.checked = false; return; }
       row.selected = e.target.checked; updateStickyPrint(); schedulePreview();
     });
     tr.querySelector('.qr-chk').addEventListener('change', e => { row.qr = e.target.checked; persistTabRows(tabName); logRow(row); schedulePreview(); });
@@ -1952,7 +2048,6 @@ function renderTable(tabName) {
         }
       }
       persistTabRows(tabName); logRow(row); schedulePreview();
-      // Preset apply may change h → re-evaluate printability
       if (tabName === 'maker') renderTable(tabName);
     });
     const colorSel = tr.querySelector('.color-sel');
@@ -2069,18 +2164,50 @@ function renderPreview() {
 function renderMakerPreview() {
   const body = el('makerPreviewBody'); if (!body) return;
   body.innerHTML = '';
-  // Slice 3: preview only shows SELECTED rows. Empty preview when nothing is selected.
+  // Slice 4: preview shows only selected rows whose height matches the active tape.
+  // Active tape = connected cartridge OR manual override. If neither set, empty.
+  const activeH = getActiveTapeHeight();
   const selected = state.maker.rows.filter(r => r.selected);
+  let printable = [];
+  if (activeH !== null) {
+    printable = selected.filter(r => Math.abs(r.h - activeH) < 0.01);
+  }
+
   if (selected.length === 0) {
     body.innerHTML = `<div class="single-stage" style="color: var(--muted); font-size: 12px; text-align: center; padding: 40px;">Select rows in the table to preview them here.</div>`;
     el('makerPreviewInfo').textContent = '— mm × — mm';
     return;
   }
+  if (activeH === null) {
+    body.innerHTML = `<div class="single-stage" style="color: var(--muted); font-size: 12px; text-align: center; padding: 40px;">Connect a printer or set <b>Preview as</b> in the printer strip to see selected labels.</div>`;
+    el('makerPreviewInfo').textContent = `${selected.length} selected · no active tape`;
+    return;
+  }
+  if (printable.length === 0) {
+    body.innerHTML = `<div class="single-stage" style="color: var(--muted); font-size: 12px; text-align: center; padding: 40px;">${selected.length} row${selected.length===1?'':'s'} selected but none match the active ${activeH}mm tape.</div>`;
+    el('makerPreviewInfo').textContent = `${selected.length} selected · 0 of ${activeH}mm`;
+    return;
+  }
+
+  // Sort by color within active height, table order within color.
+  // (Active height is uniform across all printable rows, so we only need
+  // color + table order for ordering within this slice.)
+  const tableOrder = new Map();
+  state.maker.rows.forEach((r, i) => tableOrder.set(r.uid, i));
+  const colorKeys = Object.keys(TAPE_COLORS);
+  const colorOrder = new Map();
+  colorKeys.forEach((k, i) => colorOrder.set(k, i));
+  printable.sort((a, b) => {
+    const ca = colorOrder.get(a.color || 'white-black') ?? 999;
+    const cb = colorOrder.get(b.color || 'white-black') ?? 999;
+    if (ca !== cb) return ca - cb;
+    return (tableOrder.get(a.uid) ?? 0) - (tableOrder.get(b.uid) ?? 0);
+  });
+
   const stage = document.createElement('div');
   stage.className = 'single-stage';
   body.appendChild(stage);
-  // Each selected row renders with its OWN stored color (not the global tapeColor)
-  selected.slice(0, 12).forEach(row => {
+  printable.slice(0, 16).forEach(row => {
     const frame = document.createElement('div');
     frame.className = 'single-frame';
     const card = buildLabelCard(row, { withShadow: true, tapeColor: row.color || 'white-black' });
@@ -2094,14 +2221,17 @@ function renderMakerPreview() {
     stage.appendChild(frame);
     requestAnimationFrame(() => card._fit && card._fit());
   });
-  if (selected.length > 12) {
+  if (printable.length > 16) {
     const more = document.createElement('div');
     more.style.cssText = 'width:100%;text-align:center;color:var(--muted);font-size:11px;font-family:Archivo;text-transform:uppercase;letter-spacing:0.1em;margin-top:8px;';
-    more.textContent = `+ ${selected.length - 12} more selected rows`;
+    more.textContent = `+ ${printable.length - 16} more`;
     body.appendChild(more);
   }
-  const totalLabels = selected.reduce((s, r) => s + Math.max(1, r.copies || 1), 0);
-  el('makerPreviewInfo').textContent = `${selected.length} selected · ${totalLabels} labels`;
+  const totalLabels = printable.reduce((s, r) => s + Math.max(1, r.copies || 1), 0);
+  const skipped = selected.length - printable.length;
+  el('makerPreviewInfo').textContent =
+    `${printable.length} of ${selected.length} selected · ${totalLabels} labels at ${activeH}mm` +
+    (skipped > 0 ? ` · ${skipped} skipped (wrong height)` : '');
 }
 
 function renderPrinterPreview() {
@@ -2187,9 +2317,18 @@ function paginate(pageW, pageH, marginMm, gapH, gapV, items) {
   const pages = [];
   let curPage = [];
   let cursorX = 0, cursorY = 0, rowH = 0;
+  let lastH = null;  // Slice 4: force row-wrap when height changes
   for (const it of items) {
     if (it.w > innerW || it.h > innerH) { it.skipped = true; continue; }
-    if (cursorX + it.w > innerW + 0.001) { cursorX = 0; cursorY += rowH + gapV; rowH = 0; }
+    // Force a row break when this item's height differs from the current row's height.
+    // This is what makes "scissor cuts straight across" work: every visual row
+    // contains labels of exactly one height.
+    const heightChanged = (lastH !== null && Math.abs(it.h - lastH) > 0.01);
+    if (heightChanged || cursorX + it.w > innerW + 0.001) {
+      cursorX = 0;
+      cursorY += rowH + gapV;
+      rowH = 0;
+    }
     if (cursorY + it.h > innerH + 0.001) {
       pages.push(curPage); curPage = [];
       cursorX = 0; cursorY = 0; rowH = 0;
@@ -2197,6 +2336,7 @@ function paginate(pageW, pageH, marginMm, gapH, gapV, items) {
     curPage.push({ ...it, x: cursorX, y: cursorY });
     cursorX += it.w + gapH;
     if (it.h > rowH) rowH = it.h;
+    lastH = it.h;
   }
   if (curPage.length) pages.push(curPage);
   return pages;
@@ -2208,8 +2348,14 @@ function expandPrinterQueue(rowsOverride) {
   for (const row of src) {
     const dims = effectiveDimsForRow(row);
     const n = Math.max(1, row.copies || 1);
-    for (let i = 0; i < n; i++) items.push({ row, w: dims.w, h: dims.h });
+    for (let i = 0; i < n; i++) items.push({ row, w: dims.w, h: dims.h, _tableOrder: state.printer.rows.indexOf(row) });
   }
+  // Slice 4: sort by height DESCENDING (tallest first → top of page), then by
+  // table order. This produces clean horizontal scissor lines.
+  items.sort((a, b) => {
+    if (Math.abs(a.h - b.h) > 0.01) return b.h - a.h;   // taller first
+    return a._tableOrder - b._tableOrder;
+  });
   return items;
 }
 
@@ -2289,39 +2435,29 @@ const TAPE_EDGE_SAFE_MM = 0.3;
 
 function mmToTapePx(mm) { return Math.round(mm * TAPE_DPI / 25.4); }
 
-function resolveTapeWidth(printerStatus) {
-  if (state.tapeWidthMm && state.tapeWidthMm !== 'auto') {
-    const n = parseInt(state.tapeWidthMm, 10);
+/* ---- SLICE 4: TAPE HEIGHT RESOLUTION ----
+   The "active tape height" drives which Maker rows show up in preview and which
+   are printable. Priority:
+     1. Connected printer's cartridge (status.tape_width_mm) — always wins when connected
+     2. Manual override (state.tapeOverrideMm) — preview-only, used when disconnected
+     3. null — no active height; preview will be empty
+   The override dropdown in the printer-status strip is ignored when a printer is connected. */
+function getActiveTapeHeight() {
+  if (_lastPrinterStatus && _lastPrinterStatus.connected && _lastPrinterStatus.tape_width_mm) {
+    return _lastPrinterStatus.tape_width_mm;
+  }
+  if (state.tapeOverrideMm) {
+    const n = parseInt(state.tapeOverrideMm, 10);
     if (!isNaN(n) && TAPE_HEIGHTS_PX[n]) return n;
   }
-  if (printerStatus && printerStatus.tape_width_mm) return printerStatus.tape_width_mm;
-  return 12;
+  return null;
 }
 
-/* Resolve using the most recently cached printer status (no arg version) */
-function resolveTapeWidthCurrent() {
-  return resolveTapeWidth(_lastPrinterStatus);
+/* True if the user has a real connected printer (vs preview-only override). */
+function isPrinterReady() {
+  return !!(_lastPrinterStatus && _lastPrinterStatus.connected && _lastPrinterStatus.tape_width_mm);
 }
 
-/* Slice 2: maker label height default = tape width. Update state.maker.formatH and
-   the readonly H input whenever tape width changes (printer connects, user picks
-   override, etc.). Slice 3: existing rows are NEVER touched — only the default
-   for next-row-added changes. */
-function updateMakerFormatHeight() {
-  const newH = resolveTapeWidthCurrent();
-  if (state.maker.formatH === newH) return;
-  state.maker.formatH = newH;
-  const inp = el('makerH'); if (inp) inp.value = newH;
-  persistConfig();
-}
-
-function tapeWidthMismatchWarning(effectiveWidth, printerStatus) {
-  if (!printerStatus || !printerStatus.connected) return null;
-  if (!printerStatus.tape_width_mm) return null;
-  if (printerStatus.tape_width_mm === effectiveWidth) return null;
-  return `Printer has ${printerStatus.tape_width_mm}mm cartridge loaded — print will likely fail. ` +
-         `Load ${effectiveWidth}mm tape, or change Tape Width to Auto.`;
-}
 function resolveMaxPrintPx(effectiveWidth, printerStatus) {
   if (printerStatus && printerStatus.tape_width_mm === effectiveWidth && printerStatus.max_print_px) {
     return printerStatus.max_print_px;
@@ -2508,50 +2644,46 @@ async function printRowToTape(row, btnEl) {
 }
 
 async function printBatchToTape() {
-  const selected = state.maker.rows.filter(r => r.selected);
-  if (selected.length === 0) { alert('No rows selected.'); return; }
-
-  const expanded = [];
-  for (const row of selected) {
-    const copies = Math.max(1, parseInt(row.copies || 1));
-    for (let i = 0; i < copies; i++) expanded.push(row);
-  }
+  const allSelected = state.maker.rows.filter(r => r.selected);
+  if (allSelected.length === 0) { alert('No rows selected.'); return; }
 
   let status;
   try { const r = await fetch('/api/printer/status'); status = await r.json(); }
   catch (e) { alert('Cannot reach printer endpoint.'); return; }
   if (!status.connected) { alert(`Printer not connected.\n\n${status.hint || status.error || 'unknown'}`); return; }
+  if (!status.tape_width_mm) { alert('Printer is connected but tape width is unknown.'); return; }
 
-  // Slice 3: every selected row must have the same h, and it must match the cartridge.
-  // (The UI already prevents non-printable rows from being checked, but defend in depth.)
-  const uniqueHeights = [...new Set(selected.map(r => r.h))];
-  if (uniqueHeights.length > 1) {
-    alert(`Selected rows have different heights: ${uniqueHeights.map(h => h + 'mm').join(', ')}.\n\n` +
-          `Tape printing requires all selected labels to share the same height. Print them in separate batches.`);
+  const cartridgeH = status.tape_width_mm;
+  // Slice 4: filter selected to only rows matching the loaded cartridge.
+  // Mismatch rows are silently ignored (user is informed in the confirm dialog).
+  const printable = allSelected.filter(r => Math.abs(r.h - cartridgeH) < 0.01);
+  if (printable.length === 0) {
+    alert(`None of the ${allSelected.length} selected rows match the loaded ${cartridgeH}mm cartridge.\n\n` +
+          `Either load matching tape or select rows of ${cartridgeH}mm height.`);
     return;
   }
-  const batchHeight = uniqueHeights[0];
-  if (status.tape_width_mm && Math.abs(status.tape_width_mm - batchHeight) > 0.01) {
-    alert(`Can't print this batch.\n\n` +
-          `• Selected labels are ${batchHeight}mm tall\n` +
-          `• Printer has ${status.tape_width_mm}mm cartridge loaded\n\n` +
-          `Load matching tape and try again.`);
-    return;
+  const skipped = allSelected.length - printable.length;
+
+  const expanded = [];
+  for (const row of printable) {
+    const copies = Math.max(1, parseInt(row.copies || 1));
+    for (let i = 0; i < copies; i++) expanded.push(row);
   }
 
-  const tapeWidth = batchHeight;
+  const tapeWidth = cartridgeH;
   const maxPrintPx = resolveMaxPrintPx(tapeWidth, status);
 
   const totalContentMm = expanded.reduce((s, r) => s + effectiveDimsForRow(r).w, 0);
   const leaderMm = 25;
   const totalTapeMm = totalContentMm + leaderMm;
-  const savedVsIndividualMm = (expanded.length - 1) * leaderMm;
 
-  const confirmMsg =
+  let confirmMsg =
     `Print ${expanded.length} labels as ONE batch on ${status.model || 'tape printer'}?\n\n` +
     `• Tape: ${tapeWidth}mm\n` +
-    `• Total tape used: ~${totalTapeMm.toFixed(0)}mm (${(totalTapeMm/25.4).toFixed(1)}")\n` +
-    `• Savings vs printing individually: ~${savedVsIndividualMm}mm`;
+    `• Total tape used: ~${totalTapeMm.toFixed(0)}mm (${(totalTapeMm/25.4).toFixed(1)}")`;
+  if (skipped > 0) {
+    confirmMsg += `\n\n${skipped} selected row${skipped===1?' was':'s were'} skipped (height didn't match cartridge).`;
+  }
   if (!confirm(confirmMsg)) return;
 
   const btn = el('makerBatchBtn');
@@ -2662,16 +2794,31 @@ function updateStickyPrint() {
 
   const selectedRows = ts.rows.filter(r => r.selected);
   const selCount = selectedRows.length;
-  const labelCount = selectedRows.reduce((s,r) => s + Math.max(1, r.copies||1), 0);
 
-  // Slice 3: only "Print Selected" — clearer single-action UX. Empty selection = disabled.
   let summaryHtml, btnHtml;
   if (tab === 'maker') {
-    summaryHtml = selCount === 0
-      ? `<span style="color:var(--muted);">Select rows in the table</span>`
-      : `<b>${labelCount}</b> label${labelCount===1?'':'s'} · ${selCount} row${selCount===1?'':'s'} selected`;
-    btnHtml = `<button class="primary-btn" id="makerBatchBtn" ${selCount===0?'disabled':''}>⎙ Print Selected to Tape</button>`;
+    // Slice 4: Maker print is gated by the connected printer's cartridge height.
+    // Only rows matching the cartridge are countable; printer must be connected.
+    const ready = isPrinterReady();
+    const cartridgeH = ready ? _lastPrinterStatus.tape_width_mm : null;
+    const printable = ready ? selectedRows.filter(r => Math.abs(r.h - cartridgeH) < 0.01) : [];
+    const printLabels = printable.reduce((s,r) => s + Math.max(1, r.copies||1), 0);
+    const skipped = selCount - printable.length;
+
+    let canPrint = ready && printable.length > 0;
+    if (selCount === 0) {
+      summaryHtml = `<span style="color:var(--muted);">Select rows in the table</span>`;
+    } else if (!ready) {
+      summaryHtml = `<span style="color:var(--accent);">Connect a printer to print</span>`;
+    } else if (printable.length === 0) {
+      summaryHtml = `<span style="color:var(--accent);">0 of ${selCount} match ${cartridgeH}mm cartridge</span>`;
+    } else {
+      summaryHtml = `<b>${printLabels}</b> label${printLabels===1?'':'s'} · ${printable.length}/${selCount} match ${cartridgeH}mm` +
+                    (skipped > 0 ? ` · ${skipped} skipped` : '');
+    }
+    btnHtml = `<button class="primary-btn" id="makerBatchBtn" ${canPrint ? '' : 'disabled'}>⎙ Print Selected to Tape</button>`;
   } else {
+    const labelCount = selectedRows.reduce((s,r) => s + Math.max(1, r.copies||1), 0);
     summaryHtml = selCount === 0
       ? `<span style="color:var(--muted);">Select rows in the table</span>`
       : `<b>${labelCount}</b> label${labelCount===1?'':'s'} · ${selCount} row${selCount===1?'':'s'} selected`;
@@ -2683,10 +2830,10 @@ function updateStickyPrint() {
 
   if (tab === 'maker') {
     const sel = el('makerBatchBtn');
-    if (sel) sel.addEventListener('click', () => { if (selCount > 0) printBatchToTape(); });
+    if (sel && !sel.disabled) sel.addEventListener('click', () => printBatchToTape());
   } else {
     const sel = el('printerSelBtn');
-    if (sel) sel.addEventListener('click', () => { if (selCount > 0) printSelectedSheet(); });
+    if (sel && !sel.disabled) sel.addEventListener('click', () => printSelectedSheet());
   }
 }
 
@@ -2722,6 +2869,7 @@ function setupListeners() {
   // Maker config
   el('makerW').addEventListener('input', () => { const v = parseFloat(el('makerW').value); if (!isNaN(v)) state.maker.formatW = v; persistConfig(); });
   el('makerH').addEventListener('input', () => { const v = parseFloat(el('makerH').value); if (!isNaN(v)) state.maker.formatH = v; persistConfig(); });
+  el('makerColor').addEventListener('change', () => { state.maker.formatColor = el('makerColor').value; persistConfig(); });
   el('makerSavePresetBtn').addEventListener('click', () => savePreset('maker'));
 
   // Printer config
@@ -2734,19 +2882,16 @@ function setupListeners() {
   el('gapV').addEventListener('input', () => { state.printer.gapV = parseFloat(el('gapV').value) || 0; persistConfig(); schedulePreview(); });
   el('cutMarks').addEventListener('change', () => { state.printer.cutMarks = el('cutMarks').checked; persistConfig(); });
 
-  // Tape output
-  const tw = el('tapeWidthSel');
-  if (tw) tw.addEventListener('change', () => {
-    state.tapeWidthMm = tw.value; persistConfig();
-    updateTapeStatusHint();
-    // Slice 3: existing rows are immutable — just update the format default for next-add.
-    // Re-render the table so printability indicators reflect the new tape width.
-    updateMakerFormatHeight();
-    renderTable('maker');
+  // Slice 4: manual tape-width override (in printer status strip).
+  // Used for preview only when no printer is connected. When a printer IS connected,
+  // the connected cartridge wins and this dropdown's value is ignored.
+  const tov = el('tapeOverrideSel');
+  if (tov) tov.addEventListener('change', () => {
+    state.tapeOverrideMm = tov.value || '';
+    persistConfig();
+    renderTable('maker');   // printability indicators may change
     schedulePreview();
   });
-  const tc = el('tapeColorSel');
-  if (tc) tc.addEventListener('change', () => { state.tapeColor = tc.value; persistConfig(); });
 
   // QR (single instance lives in Options tab)
   const qrModeEl = el('qrMode');
@@ -2787,14 +2932,9 @@ function setupListeners() {
   document.querySelectorAll('.select-all-chk').forEach(c => c.addEventListener('change', e => {
     const tab = c.dataset.table;
     const ts = getTabState(tab); if (!ts) return;
-    // Slice 3: in Label Maker, select-all only ticks printable rows
-    const loadedMm = (tab === 'maker' && _lastPrinterStatus && _lastPrinterStatus.connected)
-      ? (_lastPrinterStatus.tape_width_mm || null)
-      : null;
-    ts.rows.forEach(r => {
-      const printable = (tab !== 'maker' || loadedMm === null || Math.abs(r.h - loadedMm) < 0.01);
-      r.selected = e.target.checked && printable;
-    });
+    // Slice 4: select-all selects EVERY row (printable or not), since the user might
+    // want to duplicate/delete unprintable rows in bulk. Print path filters at print time.
+    ts.rows.forEach(r => { r.selected = e.target.checked; });
     renderTable(tab); updateStickyPrint(); schedulePreview();
   }));
   document.querySelectorAll('.reissue-btn').forEach(b => b.addEventListener('click', async () => {
@@ -2836,16 +2976,27 @@ function setupListeners() {
 /* ---- PRINTER STATUS DISPLAY ---- */
 let _lastPrinterStatus = null;
 
+/* Slice 4: show or hide the "PREVIEW AS" override widget in the status strip.
+   - Connected: hide entirely (cartridge wins; no manual override needed).
+   - Disconnected: show, so the user can pick a tape size for preview. */
+function updateOverrideVisibility() {
+  const wrap = el('overrideWrap'); if (!wrap) return;
+  const connected = !!(_lastPrinterStatus && _lastPrinterStatus.connected && _lastPrinterStatus.tape_width_mm);
+  wrap.style.display = connected ? 'none' : '';
+}
+
+/* Slice 4: When disconnected and an override is set, surface it in the status text. */
 function updateTapeStatusHint() {
   const text = el('printerText'); if (!text) return;
   const d = _lastPrinterStatus;
-  if (!state.tapeWidthMm || state.tapeWidthMm === 'auto') {
-    if (d) renderPrinterStatusText(d);
-    return;
+  if (!d) return;
+  // Re-render base
+  renderPrinterStatusText(d);
+  // If disconnected and an override is set, append a preview-as note
+  if (!d.connected && state.tapeOverrideMm) {
+    const n = parseInt(state.tapeOverrideMm, 10);
+    if (!isNaN(n)) text.textContent = text.textContent + ` · preview ${n}mm`;
   }
-  if (d) renderPrinterStatusText(d);
-  const overrideMm = parseInt(state.tapeWidthMm, 10);
-  if (!isNaN(overrideMm)) text.textContent = text.textContent + ` · designing for ${overrideMm}mm`;
 }
 
 function renderPrinterStatusText(d) {
@@ -2857,6 +3008,7 @@ function renderPrinterStatusText(d) {
     if (d.model) parts.push(d.model);
     if (d.tape_width_mm) parts.push(`${d.tape_width_mm}mm tape`);
     else if (d.tape_width_px) parts.push(`${d.tape_width_px}px tape`);
+    if (d.tape_color) parts.push(`${d.tape_color} tape`);
     text.textContent = parts.join(' · ') || 'Ready';
   } else {
     dot.className = 'dot err';
@@ -2881,13 +3033,17 @@ async function refreshPrinterStatus() {
     _lastPrinterStatus = d;
     renderPrinterStatusText(d);
     updateTapeStatusHint();
-    updateMakerFormatHeight();
-    // Slice 3: if cartridge width or connection state changed, re-render the Maker table
-    // so printability indicators refresh.
+    updateOverrideVisibility();
+    // If cartridge width or connection changed, re-render Maker (printability indicators).
     const widthChanged = (d.tape_width_mm || null) !== prevWidth;
     const connectionChanged = !!d.connected !== !!prevConnected;
-    if (widthChanged || connectionChanged) renderTable('maker');
-  } catch (e) { dot.className = 'dot err'; text.textContent = 'Could not query printer'; _lastPrinterStatus = null; renderTable('maker'); }
+    if (widthChanged || connectionChanged) { renderTable('maker'); schedulePreview(); }
+  } catch (e) {
+    dot.className = 'dot err'; text.textContent = 'Could not query printer';
+    _lastPrinterStatus = null;
+    updateOverrideVisibility();
+    renderTable('maker');
+  }
   finally { if (btn) btn.disabled = false; }
 }
 

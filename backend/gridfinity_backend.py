@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.13.0"  # Forge: per-row color, row immutability, printability gating, Options tab
+APP_VERSION = "1.14.0"  # Forge: Tape Output panel removed, manual tape override in status strip, height-grouped sheet pagination, color in Label Format
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
