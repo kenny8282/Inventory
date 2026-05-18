@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.17.0"  # Slice 6: portable backup/restore (UI + optional USB drive destination)
+APP_VERSION = "1.18.0"  # Slice 7: inventory buy_url, sub_items, photo fields (1-photo, downscaled client-side)
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
@@ -828,14 +828,29 @@ def delete_item(item_id):
 
 @app.route("/api/items", methods=["GET"])
 def list_items():
-    """List all items, optionally filtered by ?type=bin|container."""
+    """List all items, optionally filtered by ?type=bin|container.
+    By default, strips heavyweight fields (photo base64) to keep the
+    list response small. Pass ?with_photos=1 to include them."""
     reg = _load_registry()
     type_filter = request.args.get("type")
+    with_photos = request.args.get("with_photos") in ("1", "true", "yes")
     items = list(reg.values())
     if type_filter:
         items = [i for i in items if i.get("type") == type_filter]
     # Sort by created date
     items.sort(key=lambda i: i.get("created", ""))
+    if not with_photos:
+        # Lightweight: replace photo data with a hint marker so the client
+        # knows there's a photo without paying the bandwidth cost.
+        stripped = []
+        for i in items:
+            if "photo" in i:
+                lite = {k: v for k, v in i.items() if k != "photo"}
+                lite["has_photo"] = True
+                stripped.append(lite)
+            else:
+                stripped.append(i)
+        items = stripped
     return jsonify({"items": items, "count": len(items)})
 
 

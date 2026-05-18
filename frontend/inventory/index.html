@@ -476,6 +476,156 @@
     font-family: 'Archivo', sans-serif;
   }
   .item-row .ibadge.bin { background: var(--accent-2); }
+  .item-row .ibadge.buy-indicator {
+    background: #1a5d1a;
+    font-size: 10px;
+    padding: 0 6px;
+  }
+
+  /* Slice 7: quantity + Buy button row */
+  .detail-qty-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .buy-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    font-family: 'Archivo', sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .buy-btn.live {
+    background: #1a5d1a;
+    color: white;
+    border-color: #1a5d1a;
+  }
+  .buy-btn.live:hover {
+    background: #155015;
+  }
+  .buy-btn.dead {
+    background: var(--row-alt, #eee);
+    color: var(--muted);
+    border-color: var(--rule);
+    cursor: not-allowed;
+    opacity: 0.65;
+  }
+
+  /* Sub-items: read-only list on detail page */
+  .sub-items-list {
+    margin-top: 6px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .sub-item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    background: var(--paper, white);
+    font-size: 12px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .sub-item-row:last-child { border-bottom: none; }
+  .sub-item-row .sub-name {
+    flex: 1;
+    color: var(--ink);
+  }
+  .sub-item-row .sub-qty {
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+  }
+
+  /* Sub-items: editor inside Edit modal */
+  .sub-items-edit-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .sub-row {
+    display: grid;
+    grid-template-columns: 1fr 60px 28px;
+    gap: 4px;
+    align-items: center;
+  }
+  .sub-row .sub-name-input,
+  .sub-row .sub-qty-input {
+    padding: 4px 6px;
+    font-size: 12px;
+  }
+  .sub-row .sub-del-btn {
+    padding: 4px;
+    background: transparent;
+    border: 1px solid var(--rule);
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 11px;
+  }
+  .sub-row .sub-del-btn:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  /* Photo display + remove button */
+  .item-photo-wrap {
+    position: relative;
+    display: inline-block;
+    margin-top: 6px;
+    max-width: 100%;
+  }
+  .item-photo {
+    max-width: 100%;
+    max-height: 280px;
+    display: block;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    cursor: zoom-in;
+    background: #f0f0f0;
+  }
+  .photo-remove-btn {
+    position: absolute;
+    top: 4px; right: 4px;
+    background: rgba(0,0,0,0.65);
+    color: white;
+    border: none;
+    width: 24px; height: 24px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+  }
+  .photo-remove-btn:hover { background: rgba(0,0,0,0.85); }
+  .photo-add-btn {
+    width: 100%;
+    padding: 8px;
+  }
+
+  /* Photo lightbox */
+  .photo-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    cursor: zoom-out;
+    padding: 20px;
+  }
+  .photo-lightbox.open { display: flex; }
+  .photo-lightbox img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
   .empty-state {
     text-align: center;
     padding: 32px 12px;
@@ -1426,10 +1576,20 @@ function renderItemDetail(rec) {
       html += `<div class="detail-field"><span class="k">Contents</span> ${rec.contents.length} container${rec.contents.length === 1 ? '' : 's'}</div>`;
       html += `<div class="item-list" style="margin-top:8px;">`;
       rec.contents.forEach(c => {
+        // Build the meta line. Prefer sub-item summary if available, fall back to qty.
+        let metaText = '';
+        if (Array.isArray(c.sub_items) && c.sub_items.length) {
+          const total = c.sub_items.reduce((s, si) => s + (Number(si.qty) || 0), 0);
+          metaText = `${total} item${total === 1 ? '' : 's'}`;
+        } else if (c.quantity) {
+          metaText = `qty ${c.quantity}`;
+        }
+        const hasBuy = !!(c.buy_url && c.buy_url.trim());
         html += `
           <div class="item-row" onclick="showItemDetail('${c.id}')">
             <div class="ititle">${escapeHtml(friendlyName(c))}</div>
-            ${c.quantity ? `<div class="imeta">qty ${c.quantity}</div>` : ''}
+            ${metaText ? `<div class="imeta">${metaText}</div>` : ''}
+            ${hasBuy ? '<div class="ibadge buy-indicator" title="Has purchase link">🛒</div>' : ''}
             <div class="iid">${c.id}</div>
           </div>
         `;
@@ -1471,9 +1631,49 @@ function renderItemDetail(rec) {
     } else {
       html += `<div class="detail-field" style="color:var(--accent);"><span class="k">Bin</span> Not assigned</div>`;
     }
-    if (rec.quantity != null) html += `<div class="detail-field"><span class="k">Quantity</span> ${rec.quantity}</div>`;
+    if (rec.quantity != null || rec.buy_url) {
+      // Quantity + Buy button on the same row.
+      // Buy button is green when buy_url is set, grey otherwise (disabled).
+      const buyUrl = (rec.buy_url || '').trim();
+      const buyAttr = buyUrl ? `onclick="openBuyUrl('${escapeAttr(buyUrl)}')"` : 'disabled';
+      const buyClass = buyUrl ? 'buy-btn live' : 'buy-btn dead';
+      const buyTitle = buyUrl ? `Open: ${escapeAttr(buyUrl)}` : 'No purchase link set (add one via Edit Details)';
+      const qtyText = rec.quantity != null ? `<span class="k">Quantity</span> ${rec.quantity}` : '';
+      html += `<div class="detail-field detail-qty-row">
+        ${qtyText}
+        <button class="${buyClass}" ${buyAttr} title="${buyTitle}">🛒 Buy</button>
+      </div>`;
+    }
     if (rec.category) html += `<div class="detail-field"><span class="k">Category</span> ${escapeHtml(rec.category)}</div>`;
     if (rec.notes) html += `<div class="detail-field"><span class="k">Notes</span> ${escapeHtml(rec.notes)}</div>`;
+
+    // Sub-items list (lightweight: name + qty per row, not full inventory items)
+    const subItems = Array.isArray(rec.sub_items) ? rec.sub_items : [];
+    if (subItems.length) {
+      const totalCount = subItems.reduce((s, si) => s + (Number(si.qty) || 0), 0);
+      html += `<div class="detail-field"><span class="k">Contents</span> ${totalCount} item${totalCount === 1 ? '' : 's'} across ${subItems.length} entr${subItems.length === 1 ? 'y' : 'ies'}</div>`;
+      html += `<div class="sub-items-list">`;
+      subItems.forEach(si => {
+        const n = (si.name || '').trim() || '(unnamed)';
+        const q = Number(si.qty) || 0;
+        html += `<div class="sub-item-row"><span class="sub-name">${escapeHtml(n)}</span><span class="sub-qty">×${q}</span></div>`;
+      });
+      html += `</div>`;
+    }
+
+    // Photo display (1 photo per item)
+    if (rec.photo) {
+      html += `<div class="detail-field"><span class="k">Photo</span></div>
+        <div class="item-photo-wrap">
+          <img src="${escapeAttr(rec.photo)}" alt="item photo" class="item-photo" onclick="openPhotoLightbox(this.src)">
+          <button class="photo-remove-btn" onclick="removeItemPhoto('${rec.id}')" title="Remove photo">✕</button>
+        </div>`;
+    } else {
+      html += `<div class="detail-field" style="margin-top: 8px;">
+        <button class="secondary photo-add-btn" onclick="triggerPhotoUpload('${rec.id}')">📷 Add Photo</button>
+        <input type="file" id="photoInput_${rec.id}" accept="image/*" capture="environment" style="display:none;" onchange="handlePhotoSelected(event, '${rec.id}')">
+      </div>`;
+    }
   }
 
   html += `
@@ -2033,6 +2233,20 @@ async function openEditModal(id) {
         <input type="text" id="edSku" value="${escapeHtml(rec.supplier_sku || '')}" placeholder="SKU">
       </div>
     </div>
+    <div class="field" id="edBuyUrlField">
+      <label>Purchase URL <span style="color:var(--muted);font-weight:normal;font-size:11px;">(optional — where to re-order)</span></label>
+      <div class="row" style="gap:6px;">
+        <input type="url" id="edBuyUrl" value="${escapeAttr(rec.buy_url || '')}" placeholder="https://..." style="flex:1;">
+        <button type="button" class="secondary" style="flex:0;white-space:nowrap;padding:6px 10px;" onclick="testBuyUrl()" title="Open the link in a new tab to verify it">Test ↗</button>
+      </div>
+    </div>
+    <!-- Sub-items list editor: lightweight name+qty rows for things inside this container
+         that don't deserve their own ID. TODO: future "Google it" search by description+supplier+sku -->
+    <div class="field" id="edSubItemsField">
+      <label>Contents <span style="color:var(--muted);font-weight:normal;font-size:11px;">(optional — sub-items inside this container)</span></label>
+      <div id="edSubItemsList" class="sub-items-edit-list"></div>
+      <button type="button" class="secondary" style="margin-top:6px;font-size:11px;padding:4px 10px;" onclick="addSubItemRow()">+ Add Row</button>
+    </div>
     <div class="field">
       <label>Notes</label>
       <textarea id="edNotes">${escapeHtml(rec.notes || '')}</textarea>
@@ -2046,12 +2260,18 @@ async function openEditModal(id) {
     </div>
   `;
   el('editModal').classList.add('open');
+  // Populate sub-items editor (deferred until after innerHTML is in the DOM)
+  const existingSubs = Array.isArray(rec.sub_items) ? rec.sub_items : [];
+  existingSubs.forEach(si => addSubItemRow(si.name, si.qty));
   setupAutocomplete('edLoc', 'edLocAuto');
   // Show/hide fields based on type
   const updateVisibility = () => {
     const t = el('edType').value;
     el('edLocField').style.display = t === 'bin' ? '' : 'none';
     el('edBinField').style.display = t === 'container' ? '' : 'none';
+    // Purchase URL and sub-items are container-only concepts
+    const buyField = el('edBuyUrlField'); if (buyField) buyField.style.display = t === 'container' ? '' : 'none';
+    const subField = el('edSubItemsField'); if (subField) subField.style.display = t === 'container' ? '' : 'none';
   };
   el('edType').addEventListener('change', updateVisibility);
   updateVisibility();
@@ -2062,6 +2282,34 @@ function closeEditModal() {
 }
 
 async function saveEdit(id) {
+  // Collect sub-items from the dynamic rows
+  const subItems = [];
+  document.querySelectorAll('#edSubItemsList .sub-row').forEach(row => {
+    const nameEl = row.querySelector('.sub-name-input');
+    const qtyEl = row.querySelector('.sub-qty-input');
+    const name = (nameEl?.value || '').trim();
+    const qty = parseInt(qtyEl?.value);
+    if (!name) return;     // skip blank rows
+    subItems.push({ name, qty: isNaN(qty) ? 1 : qty });
+  });
+
+  // Buy URL: trim, validate, allow blank to clear. Reject malformed URLs.
+  const buyUrlRaw = (el('edBuyUrl')?.value || '').trim();
+  let buyUrl = null;
+  if (buyUrlRaw) {
+    try {
+      const u = new URL(buyUrlRaw);
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+        toast('Purchase URL must start with http:// or https://', 'red');
+        return;
+      }
+      buyUrl = u.toString();
+    } catch(e) {
+      toast('Purchase URL is not valid', 'red');
+      return;
+    }
+  }
+
   const patch = {
     type: el('edType').value,
     description: el('edDesc').value.trim(),
@@ -2072,6 +2320,8 @@ async function saveEdit(id) {
     supplier: el('edSupplier').value.trim() || null,
     supplier_sku: el('edSku').value.trim() || null,
     notes: el('edNotes').value.trim() || null,
+    buy_url: buyUrl,                       // null clears the field
+    sub_items: subItems.length ? subItems : null,
   };
   const ok = await saveItem(id, patch);
   if (ok) {
@@ -2090,6 +2340,163 @@ async function deleteItem(id) {
   closeEditModal();
   refreshItems();
   if (state.currentTab === 'scan') el('scanResult').innerHTML = '';
+}
+
+/* ---- SUB-ITEMS EDITOR (inside Edit modal) ----
+   Dynamic name+qty rows. Each row knows how to remove itself. saveEdit()
+   walks .sub-row nodes and pulls their values out. */
+function addSubItemRow(name = '', qty = '') {
+  const list = el('edSubItemsList');
+  if (!list) return;
+  const row = document.createElement('div');
+  row.className = 'sub-row';
+  row.innerHTML = `
+    <input type="text" class="sub-name-input" placeholder="Item name" value="${escapeAttr(name)}">
+    <input type="number" class="sub-qty-input" placeholder="qty" min="0" value="${qty === '' ? '' : qty}">
+    <button type="button" class="sub-del-btn" title="Remove">✕</button>
+  `;
+  row.querySelector('.sub-del-btn').addEventListener('click', () => row.remove());
+  list.appendChild(row);
+}
+
+/* ---- BUY URL helpers ---- */
+function openBuyUrl(url) {
+  // Safety: only open http/https. The detail-card button only attaches this
+  // when buy_url is set, but double-check here too.
+  if (!url) return;
+  try {
+    const u = new URL(url);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+      toast('Invalid URL protocol', 'red');
+      return;
+    }
+    window.open(u.toString(), '_blank', 'noopener,noreferrer');
+  } catch(e) {
+    toast('Invalid URL', 'red');
+  }
+}
+
+function testBuyUrl() {
+  // Used from inside Edit modal — opens the URL the user is typing without saving
+  const raw = (el('edBuyUrl')?.value || '').trim();
+  if (!raw) { toast('Enter a URL first', 'red'); return; }
+  openBuyUrl(raw);
+}
+
+/* ---- PHOTO UPLOAD ----
+   1 photo per item. Mobile gets the camera prompt via capture=environment;
+   desktop gets a file picker. Client-side downscales large images so the
+   stored payload stays under ~200 KB per item. */
+
+const PHOTO_MAX_DIM = 1200;       // longest edge in pixels after downscale
+const PHOTO_JPEG_QUALITY = 0.78;  // 0..1 — balance between size and clarity
+const PHOTO_MAX_BYTES = 250 * 1024;  // ~250 KB ceiling stored as base64
+
+function triggerPhotoUpload(itemId) {
+  const inp = el(`photoInput_${itemId}`);
+  if (inp) inp.click();
+}
+
+async function handlePhotoSelected(event, itemId) {
+  const file = event.target.files && event.target.files[0];
+  event.target.value = '';   // allow re-select of same file later
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    toast('Not an image file', 'red'); return;
+  }
+  toast('Processing photo…', 'gray');
+  try {
+    const dataUrl = await downscaleImage(file, PHOTO_MAX_DIM, PHOTO_JPEG_QUALITY);
+    // base64 grows ~33% vs raw bytes — quick estimate
+    const approxBytes = Math.floor(dataUrl.length * 0.75);
+    if (approxBytes > PHOTO_MAX_BYTES * 2) {
+      // Try harder — second pass at lower quality
+      const tighter = await downscaleImage(file, 900, 0.6);
+      if (Math.floor(tighter.length * 0.75) <= PHOTO_MAX_BYTES) {
+        await saveItemPhoto(itemId, tighter);
+      } else {
+        toast('Photo too large after compression', 'red'); return;
+      }
+    } else {
+      await saveItemPhoto(itemId, dataUrl);
+    }
+  } catch(e) {
+    console.error('photo error:', e);
+    toast('Photo upload failed', 'red');
+  }
+}
+
+async function saveItemPhoto(itemId, dataUrl) {
+  const ok = await saveItem(itemId, { photo: dataUrl });
+  if (ok) {
+    toast('Photo added', 'green');
+    showItemDetail(itemId);
+  }
+}
+
+async function removeItemPhoto(itemId) {
+  if (!confirm('Remove the photo from this item?')) return;
+  const ok = await saveItem(itemId, { photo: null });
+  if (ok) {
+    toast('Photo removed', 'green');
+    showItemDetail(itemId);
+  }
+}
+
+/* Read a File, draw to canvas downsampled to maxDim, return JPEG data URL */
+function downscaleImage(file, maxDim, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        // Preserve aspect ratio; scale so longest edge = maxDim
+        if (width > maxDim || height > maxDim) {
+          if (width >= height) {
+            height = Math.round(height * (maxDim / width));
+            width = maxDim;
+          } else {
+            width = Math.round(width * (maxDim / height));
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        try {
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve(dataUrl);
+        } catch(e) { reject(e); }
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* Tap photo to enlarge — simple lightbox */
+function openPhotoLightbox(src) {
+  let lb = el('photoLightbox');
+  if (!lb) {
+    lb = document.createElement('div');
+    lb.id = 'photoLightbox';
+    lb.className = 'photo-lightbox';
+    lb.addEventListener('click', () => lb.classList.remove('open'));
+    document.body.appendChild(lb);
+  }
+  lb.innerHTML = `<img src="${escapeAttr(src)}" alt="enlarged">`;
+  lb.classList.add('open');
+}
+
+/* Small helper used inline; escape for HTML attribute (single-quoted onclick) */
+function escapeAttr(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 /* ---- LISTS ---- */
@@ -2228,12 +2635,19 @@ function setupTopSearch() {
     const q = input.value.trim().toLowerCase();
     if (!q) { list.classList.remove('open'); return; }
     const containers = state.items.filter(i => i.type === 'container');
-    const matches = containers.filter(c =>
-      friendlyName(c).toLowerCase().includes(q) ||
-      c.id.toLowerCase().includes(q) ||
-      (c.notes || '').toLowerCase().includes(q) ||
-      (c.category || '').toLowerCase().includes(q)
-    ).slice(0, 8);
+    const matches = containers.filter(c => {
+      if (friendlyName(c).toLowerCase().includes(q)) return true;
+      if (c.id.toLowerCase().includes(q)) return true;
+      if ((c.notes || '').toLowerCase().includes(q)) return true;
+      if ((c.category || '').toLowerCase().includes(q)) return true;
+      // Also match against sub-items (lightweight container contents)
+      if (Array.isArray(c.sub_items)) {
+        for (const si of c.sub_items) {
+          if ((si.name || '').toLowerCase().includes(q)) return true;
+        }
+      }
+      return false;
+    }).slice(0, 8);
     if (!matches.length) {
       list.innerHTML = `<div class="autocomplete-item" style="color:var(--muted);font-style:italic;">No matches</div>`;
       list.classList.add('open');
