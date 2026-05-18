@@ -636,6 +636,68 @@
     object-fit: contain;
   }
 
+  /* Photo crop modal (Slice 7c) */
+  .photo-crop-modal {
+    max-width: 480px;
+  }
+  .photo-crop-stage {
+    position: relative;
+    width: 100%;
+    /* Stage is square so the entire visible photo can sit behind a square frame.
+       We pick a generous aspect ratio so there's drag-room on all sides. */
+    aspect-ratio: 1 / 1;
+    background: #111;
+    overflow: hidden;
+    user-select: none;
+    touch-action: none;     /* prevents browser pinch/scroll hijacking */
+    cursor: grab;
+    border-radius: 4px;
+  }
+  .photo-crop-stage:active { cursor: grabbing; }
+  .photo-crop-stage canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    pointer-events: none;   /* canvas just draws; events go to stage */
+  }
+  .photo-crop-frame {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  .photo-crop-controls {
+    margin-top: 10px;
+  }
+  .photo-crop-controls input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: var(--rule);
+    border-radius: 3px;
+    outline: none;
+  }
+  .photo-crop-controls input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent-2);
+    cursor: pointer;
+  }
+  .photo-crop-controls input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent-2);
+    cursor: pointer;
+    border: none;
+  }
+
   .empty-state {
     text-align: center;
     padding: 32px 12px;
@@ -925,6 +987,45 @@
     <button class="close-x" onclick="closeEditModal()">×</button>
     <h2 id="editTitle">Edit Item</h2>
     <div id="editBody"></div>
+  </div>
+</div>
+
+<!-- PHOTO CROP MODAL — Slice 7c (drag-behind-square crop) -->
+<div class="modal-bg" id="photoCropModal">
+  <div class="modal photo-crop-modal">
+    <button class="close-x" onclick="cancelPhotoCrop()">×</button>
+    <h2>Position the photo</h2>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">
+      Drag the photo behind the square. Whatever fits the square will be saved as a 1:1 image.
+    </div>
+    <div class="photo-crop-stage" id="photoCropStage">
+      <!-- The image is drawn into a canvas the size of the stage; the user
+           drags it around within the square viewport. The square frame is
+           drawn as an SVG overlay so it stays crisp. -->
+      <canvas id="photoCropCanvas"></canvas>
+      <svg class="photo-crop-frame" viewBox="0 0 100 100" preserveAspectRatio="none">
+        <!-- Dim mask with a square cutout. The cutout is the active crop area
+             centered on the stage. We update its size in JS based on stage. -->
+        <defs>
+          <mask id="cropMask">
+            <rect width="100" height="100" fill="white"/>
+            <rect id="cropMaskCutout" width="100" height="100" fill="black"/>
+          </mask>
+        </defs>
+        <rect width="100" height="100" fill="rgba(8,12,16,0.62)" mask="url(#cropMask)"/>
+        <rect id="cropFrameBorder" width="100" height="100" fill="none" stroke="white" stroke-width="0.4"/>
+      </svg>
+    </div>
+    <div class="photo-crop-controls">
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;">
+        <span>Zoom</span>
+        <input type="range" id="photoCropZoom" min="1" max="3" step="0.01" value="1" style="flex:1;">
+      </label>
+    </div>
+    <div class="btn-row" style="margin-top:14px;">
+      <button class="green" onclick="confirmPhotoCrop()">Save Photo</button>
+      <button class="secondary" onclick="cancelPhotoCrop()">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -2452,38 +2553,337 @@ const PHOTO_SIZE = 900;            // final square edge in pixels (1:1)
 const PHOTO_JPEG_QUALITY = 0.78;   // 0..1 — balance between size and clarity
 const PHOTO_MAX_BYTES = 250 * 1024;  // ~250 KB ceiling stored as base64
 
+/* ---- PHOTO CROP MODAL state ----
+   The crop modal lets the user drag a photo behind a fixed square. We keep
+   the source image and the user's drag/zoom transform in module-scope state
+   while the modal is open; on Save we render the visible square crop to a
+   900×900 canvas and JPEG-encode the result. */
+const _photoCrop = {
+  img: null,           // HTMLImageElement of the source
+  targetItemId: null,  // which item to save to on confirm
+  // Transform applied to the image when drawing into the stage canvas:
+  // image is drawn at (offsetX, offsetY) with width = sourceWidth*scale, etc.
+  scale: 1,            // 1 = fit-the-stage; >1 = zoomed in
+  baseFitScale: 1,     // the scale that makes the image fit-cover the stage
+  offsetX: 0,
+  offsetY: 0,
+  stage: { w: 0, h: 0 },  // current stage size in CSS pixels
+  drag: { active: false, startX: 0, startY: 0, baseOffX: 0, baseOffY: 0 },
+  pinch: { active: false, startDist: 0, startScale: 1 },
+};
+
 function triggerPhotoUpload(itemId) {
   const inp = el(`photoInput_${itemId}`);
   if (inp) inp.click();
 }
 
-async function handlePhotoSelected(event, itemId) {
+function handlePhotoSelected(event, itemId) {
   const file = event.target.files && event.target.files[0];
   event.target.value = '';   // allow re-select of same file later
   if (!file) return;
   if (!file.type.startsWith('image/')) {
     toast('Not an image file', 'red'); return;
   }
-  toast('Processing photo…', 'gray');
-  try {
-    const dataUrl = await squareCropImage(file, PHOTO_SIZE, PHOTO_JPEG_QUALITY);
-    // base64 grows ~33% vs raw bytes — quick estimate
-    const approxBytes = Math.floor(dataUrl.length * 0.75);
-    if (approxBytes > PHOTO_MAX_BYTES * 2) {
-      // Try harder — second pass at smaller size and lower quality
-      const tighter = await squareCropImage(file, 700, 0.6);
-      if (Math.floor(tighter.length * 0.75) <= PHOTO_MAX_BYTES) {
-        await saveItemPhoto(itemId, tighter);
-      } else {
-        toast('Photo too large after compression', 'red'); return;
-      }
-    } else {
-      await saveItemPhoto(itemId, dataUrl);
+  // Load the file into an Image and open the crop modal.
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => openPhotoCropModal(img, itemId);
+    img.onerror = () => toast('Could not read image', 'red');
+    img.src = reader.result;
+  };
+  reader.onerror = () => toast('Could not read file', 'red');
+  reader.readAsDataURL(file);
+}
+
+function openPhotoCropModal(img, itemId) {
+  _photoCrop.img = img;
+  _photoCrop.targetItemId = itemId;
+  // Open the modal; size measurements only work once the stage is visible.
+  const modal = el('photoCropModal');
+  modal.classList.add('open');
+  // Defer setup so the browser computes the stage's box first
+  requestAnimationFrame(() => {
+    _initPhotoCropStage();
+    _drawPhotoCrop();
+    _bindPhotoCropEvents();
+  });
+}
+
+function cancelPhotoCrop() {
+  el('photoCropModal').classList.remove('open');
+  _unbindPhotoCropEvents();
+  _photoCrop.img = null;
+  _photoCrop.targetItemId = null;
+}
+
+async function confirmPhotoCrop() {
+  if (!_photoCrop.img || !_photoCrop.targetItemId) return;
+  const itemId = _photoCrop.targetItemId;
+  // Render the final 900×900 from the current transform.
+  // The crop frame is the centered square within the stage. We need to map
+  // that screen rectangle back to source-image coordinates.
+  const dataUrl = _renderCroppedPhoto(PHOTO_SIZE, PHOTO_JPEG_QUALITY);
+  // Size check: if too large, recompress at lower quality. We do not change
+  // dimensions because the user picked the crop; only quality is reduced.
+  let finalUrl = dataUrl;
+  const approxBytes = Math.floor(dataUrl.length * 0.75);
+  if (approxBytes > PHOTO_MAX_BYTES * 2) {
+    finalUrl = _renderCroppedPhoto(700, 0.6);
+    if (Math.floor(finalUrl.length * 0.75) > PHOTO_MAX_BYTES) {
+      toast('Photo too large even after compression', 'red');
+      return;
     }
-  } catch(e) {
-    console.error('photo error:', e);
-    toast('Photo upload failed', 'red');
   }
+  cancelPhotoCrop();
+  await saveItemPhoto(itemId, finalUrl);
+}
+
+function _initPhotoCropStage() {
+  const stage = el('photoCropStage');
+  const canvas = el('photoCropCanvas');
+  const rect = stage.getBoundingClientRect();
+  _photoCrop.stage.w = rect.width;
+  _photoCrop.stage.h = rect.height;
+  // Canvas internal resolution at devicePixelRatio for sharper rendering
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(rect.width * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
+  // Update the SVG crop frame to match the centered square (= stage side, since
+  // stage is square per CSS). Currently the cutout is just the full stage — we
+  // want the frame to be 1:1 within the stage, which is the whole stage.
+  // (Stage CSS keeps it square already, so cutout = full stage.)
+  const cutout = el('cropMaskCutout');
+  if (cutout) {
+    cutout.setAttribute('x', '0');
+    cutout.setAttribute('y', '0');
+    cutout.setAttribute('width', '100');
+    cutout.setAttribute('height', '100');
+  }
+  const border = el('cropFrameBorder');
+  if (border) {
+    border.setAttribute('x', '0');
+    border.setAttribute('y', '0');
+    border.setAttribute('width', '100');
+    border.setAttribute('height', '100');
+  }
+  // Fit the image to cover the stage (largest dimension fits, the other overflows
+  // so the square is filled). This is the natural starting point — user can then
+  // zoom in further if they want.
+  const sw = _photoCrop.img.naturalWidth;
+  const sh = _photoCrop.img.naturalHeight;
+  const fitScale = Math.max(rect.width / sw, rect.height / sh);
+  _photoCrop.baseFitScale = fitScale;
+  _photoCrop.scale = 1;   // multiplier on top of baseFitScale
+  // Center the image
+  _photoCrop.offsetX = (rect.width - sw * fitScale) / 2;
+  _photoCrop.offsetY = (rect.height - sh * fitScale) / 2;
+  // Reset zoom slider
+  const zoomEl = el('photoCropZoom');
+  if (zoomEl) zoomEl.value = '1';
+}
+
+function _drawPhotoCrop() {
+  const canvas = el('photoCropCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);   // draw in CSS-pixel space
+  ctx.clearRect(0, 0, _photoCrop.stage.w, _photoCrop.stage.h);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  const img = _photoCrop.img;
+  const effScale = _photoCrop.baseFitScale * _photoCrop.scale;
+  const drawW = img.naturalWidth * effScale;
+  const drawH = img.naturalHeight * effScale;
+  ctx.drawImage(img, _photoCrop.offsetX, _photoCrop.offsetY, drawW, drawH);
+}
+
+function _renderCroppedPhoto(size, quality) {
+  // The crop area is the full stage square. In source-image coordinates,
+  // that maps to: source pixel at screen (0,0) is at:
+  //   sx = (0 - offsetX) / effScale
+  //   sy = (0 - offsetY) / effScale
+  // and the crop in source pixels is stage.w / effScale wide.
+  // We then scale that crop into the target size×size canvas.
+  const effScale = _photoCrop.baseFitScale * _photoCrop.scale;
+  const srcX = -_photoCrop.offsetX / effScale;
+  const srcY = -_photoCrop.offsetY / effScale;
+  const srcSize = _photoCrop.stage.w / effScale;   // stage is square
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  // Source rect may extend outside the image when zoomed all the way out;
+  // we don't clamp because the drag handlers prevent it from going past the
+  // image edges. But just in case, paint a black background first.
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, size, size);
+  ctx.drawImage(
+    _photoCrop.img,
+    srcX, srcY, srcSize, srcSize,
+    0, 0, size, size
+  );
+  return canvas.toDataURL('image/jpeg', quality);
+}
+
+/* ---- Drag + zoom event handlers for the crop stage ---- */
+let _cropEventBindings = null;
+
+function _bindPhotoCropEvents() {
+  _unbindPhotoCropEvents();
+  const stage = el('photoCropStage');
+  const zoom = el('photoCropZoom');
+  if (!stage || !zoom) return;
+
+  const onPointerDown = (e) => {
+    if (e.isPrimary === false) {
+      // Multi-touch — initiate pinch instead of drag
+      return;
+    }
+    e.preventDefault();
+    stage.setPointerCapture(e.pointerId);
+    _photoCrop.drag.active = true;
+    _photoCrop.drag.startX = e.clientX;
+    _photoCrop.drag.startY = e.clientY;
+    _photoCrop.drag.baseOffX = _photoCrop.offsetX;
+    _photoCrop.drag.baseOffY = _photoCrop.offsetY;
+  };
+  const onPointerMove = (e) => {
+    if (!_photoCrop.drag.active) return;
+    const dx = e.clientX - _photoCrop.drag.startX;
+    const dy = e.clientY - _photoCrop.drag.startY;
+    let newOffX = _photoCrop.drag.baseOffX + dx;
+    let newOffY = _photoCrop.drag.baseOffY + dy;
+    // Clamp so the image always covers the stage (no black edges visible).
+    const effScale = _photoCrop.baseFitScale * _photoCrop.scale;
+    const drawW = _photoCrop.img.naturalWidth * effScale;
+    const drawH = _photoCrop.img.naturalHeight * effScale;
+    const minOffX = _photoCrop.stage.w - drawW;
+    const minOffY = _photoCrop.stage.h - drawH;
+    if (newOffX > 0) newOffX = 0;
+    if (newOffY > 0) newOffY = 0;
+    if (newOffX < minOffX) newOffX = minOffX;
+    if (newOffY < minOffY) newOffY = minOffY;
+    _photoCrop.offsetX = newOffX;
+    _photoCrop.offsetY = newOffY;
+    _drawPhotoCrop();
+  };
+  const onPointerUp = (e) => {
+    _photoCrop.drag.active = false;
+    try { stage.releasePointerCapture(e.pointerId); } catch(err) {}
+  };
+
+  // Wheel zoom (desktop)
+  const onWheel = (e) => {
+    e.preventDefault();
+    const delta = -e.deltaY * 0.001;
+    let newScale = _photoCrop.scale + delta;
+    newScale = Math.max(1, Math.min(3, newScale));
+    _applyZoom(newScale);
+    zoom.value = String(newScale);
+  };
+
+  // Slider zoom (universal)
+  const onZoomInput = () => {
+    _applyZoom(parseFloat(zoom.value) || 1);
+  };
+
+  // Pinch-to-zoom (touch): two-finger gesture
+  let pinchPointers = new Map();
+  const onPinchStart = (e) => {
+    pinchPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinchPointers.size === 2) {
+      const pts = [...pinchPointers.values()];
+      _photoCrop.pinch.startDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      _photoCrop.pinch.startScale = _photoCrop.scale;
+      _photoCrop.pinch.active = true;
+      _photoCrop.drag.active = false;
+    }
+  };
+  const onPinchMove = (e) => {
+    if (pinchPointers.has(e.pointerId)) {
+      pinchPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+    if (_photoCrop.pinch.active && pinchPointers.size === 2) {
+      const pts = [...pinchPointers.values()];
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      if (_photoCrop.pinch.startDist > 0) {
+        const ratio = dist / _photoCrop.pinch.startDist;
+        let newScale = _photoCrop.pinch.startScale * ratio;
+        newScale = Math.max(1, Math.min(3, newScale));
+        _applyZoom(newScale);
+        zoom.value = String(newScale);
+      }
+    }
+  };
+  const onPinchEnd = (e) => {
+    pinchPointers.delete(e.pointerId);
+    if (pinchPointers.size < 2) _photoCrop.pinch.active = false;
+  };
+
+  stage.addEventListener('pointerdown', onPointerDown);
+  stage.addEventListener('pointermove', onPointerMove);
+  stage.addEventListener('pointerup', onPointerUp);
+  stage.addEventListener('pointercancel', onPointerUp);
+  stage.addEventListener('wheel', onWheel, { passive: false });
+  stage.addEventListener('pointerdown', onPinchStart);
+  stage.addEventListener('pointermove', onPinchMove);
+  stage.addEventListener('pointerup', onPinchEnd);
+  stage.addEventListener('pointercancel', onPinchEnd);
+  zoom.addEventListener('input', onZoomInput);
+
+  _cropEventBindings = {
+    stage, zoom,
+    onPointerDown, onPointerMove, onPointerUp,
+    onWheel, onZoomInput,
+    onPinchStart, onPinchMove, onPinchEnd,
+  };
+}
+
+function _unbindPhotoCropEvents() {
+  if (!_cropEventBindings) return;
+  const b = _cropEventBindings;
+  b.stage.removeEventListener('pointerdown', b.onPointerDown);
+  b.stage.removeEventListener('pointermove', b.onPointerMove);
+  b.stage.removeEventListener('pointerup', b.onPointerUp);
+  b.stage.removeEventListener('pointercancel', b.onPointerUp);
+  b.stage.removeEventListener('wheel', b.onWheel);
+  b.stage.removeEventListener('pointerdown', b.onPinchStart);
+  b.stage.removeEventListener('pointermove', b.onPinchMove);
+  b.stage.removeEventListener('pointerup', b.onPinchEnd);
+  b.stage.removeEventListener('pointercancel', b.onPinchEnd);
+  b.zoom.removeEventListener('input', b.onZoomInput);
+  _cropEventBindings = null;
+}
+
+/* Apply a new zoom value, keeping the current stage center as the zoom focus
+   so the user feels like they're zooming into the middle of the crop frame. */
+function _applyZoom(newScale) {
+  const oldEff = _photoCrop.baseFitScale * _photoCrop.scale;
+  const newEff = _photoCrop.baseFitScale * newScale;
+  // Center of stage in source-image coords (before zoom)
+  const cx = _photoCrop.stage.w / 2;
+  const cy = _photoCrop.stage.h / 2;
+  const sx = (cx - _photoCrop.offsetX) / oldEff;
+  const sy = (cy - _photoCrop.offsetY) / oldEff;
+  _photoCrop.scale = newScale;
+  // Re-anchor so that source point (sx, sy) stays at screen (cx, cy)
+  _photoCrop.offsetX = cx - sx * newEff;
+  _photoCrop.offsetY = cy - sy * newEff;
+  // Clamp
+  const drawW = _photoCrop.img.naturalWidth * newEff;
+  const drawH = _photoCrop.img.naturalHeight * newEff;
+  const minOffX = _photoCrop.stage.w - drawW;
+  const minOffY = _photoCrop.stage.h - drawH;
+  if (_photoCrop.offsetX > 0) _photoCrop.offsetX = 0;
+  if (_photoCrop.offsetY > 0) _photoCrop.offsetY = 0;
+  if (_photoCrop.offsetX < minOffX) _photoCrop.offsetX = minOffX;
+  if (_photoCrop.offsetY < minOffY) _photoCrop.offsetY = minOffY;
+  _drawPhotoCrop();
 }
 
 async function saveItemPhoto(itemId, dataUrl) {
@@ -2501,42 +2901,6 @@ async function removeItemPhoto(itemId) {
     toast('Photo removed', 'green');
     showItemDetail(itemId);
   }
-}
-
-/* Read a File, center-crop to a square, scale to `size`×`size`, return JPEG data URL.
-   Center-cropping discards left/right (or top/bottom) edges of the source so the
-   resulting image is uniformly 1:1 across all inventory photos. Users almost
-   always center the item when taking a photo, so the loss is acceptable. */
-function squareCropImage(file, size, quality) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const sw = img.naturalWidth, sh = img.naturalHeight;
-        // Source crop box: take the largest centered square that fits the image.
-        const cropSize = Math.min(sw, sh);
-        const sx = Math.floor((sw - cropSize) / 2);
-        const sy = Math.floor((sh - cropSize) / 2);
-        const canvas = document.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext('2d');
-        // High-quality resampling
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(img, sx, sy, cropSize, cropSize, 0, 0, size, size);
-        try {
-          const dataUrl = canvas.toDataURL('image/jpeg', quality);
-          resolve(dataUrl);
-        } catch(e) { reject(e); }
-      };
-      img.onerror = reject;
-      img.src = reader.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }
 
 /* Tap photo to enlarge — simple lightbox */
