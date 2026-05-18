@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.18.2"  # Slice 7c: interactive photo crop (drag-behind-square, pinch/wheel/slider zoom)
+APP_VERSION = "1.18.3"  # Slice 7d: photo crop modal — removed instructional text
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
