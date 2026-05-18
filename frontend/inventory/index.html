@@ -508,6 +508,14 @@
   .buy-btn.live:hover {
     background: #155015;
   }
+  .buy-btn.search {
+    background: #1a4d8f;
+    color: white;
+    border-color: #1a4d8f;
+  }
+  .buy-btn.search:hover {
+    background: #163e73;
+  }
   .buy-btn.dead {
     background: var(--row-alt, #eee);
     color: var(--muted);
@@ -578,11 +586,13 @@
     position: relative;
     display: inline-block;
     margin-top: 6px;
-    max-width: 100%;
+    max-width: 280px;
+    width: 100%;
   }
   .item-photo {
-    max-width: 100%;
-    max-height: 280px;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;       /* falls back gracefully on legacy non-square photos */
     display: block;
     border: 1px solid var(--rule);
     border-radius: 3px;
@@ -1631,17 +1641,36 @@ function renderItemDetail(rec) {
     } else {
       html += `<div class="detail-field" style="color:var(--accent);"><span class="k">Bin</span> Not assigned</div>`;
     }
-    if (rec.quantity != null || rec.buy_url) {
-      // Quantity + Buy button on the same row.
-      // Buy button is green when buy_url is set, grey otherwise (disabled).
+    // Quantity row + action button (Buy URL or Google Search).
+    // The button is always rendered for containers (per-row state below).
+    {
       const buyUrl = (rec.buy_url || '').trim();
-      const buyAttr = buyUrl ? `onclick="openBuyUrl('${escapeAttr(buyUrl)}')"` : 'disabled';
-      const buyClass = buyUrl ? 'buy-btn live' : 'buy-btn dead';
-      const buyTitle = buyUrl ? `Open: ${escapeAttr(buyUrl)}` : 'No purchase link set (add one via Edit Details)';
+      const searchQuery = buildSearchQuery(rec);   // empty string if nothing usable
       const qtyText = rec.quantity != null ? `<span class="k">Quantity</span> ${rec.quantity}` : '';
+
+      let btnLabel, btnClass, btnAttr, btnTitle;
+      if (buyUrl) {
+        // Live buy link — highest priority, take it directly
+        btnLabel = '🛒 Buy';
+        btnClass = 'buy-btn live';
+        btnAttr = `onclick="openBuyUrl('${escapeAttr(buyUrl)}')"`;
+        btnTitle = `Open: ${escapeAttr(buyUrl)}`;
+      } else if (searchQuery) {
+        // No buy URL but we have enough data to Google it
+        btnLabel = '🔍 Search';
+        btnClass = 'buy-btn search';
+        btnAttr = `onclick="openSearch('${escapeAttr(searchQuery)}')"`;
+        btnTitle = `Google search: ${escapeAttr(searchQuery)}`;
+      } else {
+        // Nothing to do — disabled hint
+        btnLabel = '🔍 Search';
+        btnClass = 'buy-btn dead';
+        btnAttr = 'disabled';
+        btnTitle = 'Add manufacturer, SKU, or description to enable search';
+      }
       html += `<div class="detail-field detail-qty-row">
         ${qtyText}
-        <button class="${buyClass}" ${buyAttr} title="${buyTitle}">🛒 Buy</button>
+        <button class="${btnClass}" ${btnAttr} title="${btnTitle}">${btnLabel}</button>
       </div>`;
     }
     if (rec.category) html += `<div class="detail-field"><span class="k">Category</span> ${escapeHtml(rec.category)}</div>`;
@@ -2227,10 +2256,10 @@ async function openEditModal(id) {
       </div>
     </div>
     <div class="field">
-      <label>Supplier / SKU</label>
+      <label>Manufacturer / Brand &amp; SKU</label>
       <div class="row">
-        <input type="text" id="edSupplier" value="${escapeHtml(rec.supplier || '')}" placeholder="Supplier">
-        <input type="text" id="edSku" value="${escapeHtml(rec.supplier_sku || '')}" placeholder="SKU">
+        <input type="text" id="edSupplier" value="${escapeHtml(rec.supplier || '')}" placeholder="Manufacturer (e.g. Spektrum)">
+        <input type="text" id="edSku" value="${escapeHtml(rec.supplier_sku || '')}" placeholder="Model / SKU">
       </div>
     </div>
     <div class="field" id="edBuyUrlField">
@@ -2383,13 +2412,44 @@ function testBuyUrl() {
   openBuyUrl(raw);
 }
 
+/* ---- GOOGLE SEARCH fallback (used when no buy_url is set) ----
+   Builds a query from manufacturer (supplier field) + SKU + description.
+   Returns "" when nothing usable is present — caller uses that to disable
+   the button. */
+function buildSearchQuery(rec) {
+  if (!rec) return '';
+  const parts = [];
+  // Manufacturer comes first — most specific signal, often a brand name like "Spektrum"
+  if (rec.supplier && rec.supplier.trim()) parts.push(rec.supplier.trim());
+  // SKU / model number second — Google often resolves these directly to a product page
+  if (rec.supplier_sku && rec.supplier_sku.trim()) parts.push(rec.supplier_sku.trim());
+  // Description last — broadens the match when manufacturer+SKU isn't enough
+  if (rec.description && rec.description.trim()) parts.push(rec.description.trim());
+  // De-duplicate by lowercase — if description repeats the brand name, drop the duplicate
+  const seen = new Set();
+  const filtered = [];
+  for (const p of parts) {
+    const k = p.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    filtered.push(p);
+  }
+  return filtered.join(' ');
+}
+
+function openSearch(query) {
+  if (!query) return;
+  const url = 'https://www.google.com/search?q=' + encodeURIComponent(query);
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
 /* ---- PHOTO UPLOAD ----
    1 photo per item. Mobile gets the camera prompt via capture=environment;
    desktop gets a file picker. Client-side downscales large images so the
    stored payload stays under ~200 KB per item. */
 
-const PHOTO_MAX_DIM = 1200;       // longest edge in pixels after downscale
-const PHOTO_JPEG_QUALITY = 0.78;  // 0..1 — balance between size and clarity
+const PHOTO_SIZE = 900;            // final square edge in pixels (1:1)
+const PHOTO_JPEG_QUALITY = 0.78;   // 0..1 — balance between size and clarity
 const PHOTO_MAX_BYTES = 250 * 1024;  // ~250 KB ceiling stored as base64
 
 function triggerPhotoUpload(itemId) {
@@ -2406,12 +2466,12 @@ async function handlePhotoSelected(event, itemId) {
   }
   toast('Processing photo…', 'gray');
   try {
-    const dataUrl = await downscaleImage(file, PHOTO_MAX_DIM, PHOTO_JPEG_QUALITY);
+    const dataUrl = await squareCropImage(file, PHOTO_SIZE, PHOTO_JPEG_QUALITY);
     // base64 grows ~33% vs raw bytes — quick estimate
     const approxBytes = Math.floor(dataUrl.length * 0.75);
     if (approxBytes > PHOTO_MAX_BYTES * 2) {
-      // Try harder — second pass at lower quality
-      const tighter = await downscaleImage(file, 900, 0.6);
+      // Try harder — second pass at smaller size and lower quality
+      const tighter = await squareCropImage(file, 700, 0.6);
       if (Math.floor(tighter.length * 0.75) <= PHOTO_MAX_BYTES) {
         await saveItemPhoto(itemId, tighter);
       } else {
@@ -2443,28 +2503,29 @@ async function removeItemPhoto(itemId) {
   }
 }
 
-/* Read a File, draw to canvas downsampled to maxDim, return JPEG data URL */
-function downscaleImage(file, maxDim, quality) {
+/* Read a File, center-crop to a square, scale to `size`×`size`, return JPEG data URL.
+   Center-cropping discards left/right (or top/bottom) edges of the source so the
+   resulting image is uniformly 1:1 across all inventory photos. Users almost
+   always center the item when taking a photo, so the loss is acceptable. */
+function squareCropImage(file, size, quality) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
       img.onload = () => {
-        let { width, height } = img;
-        // Preserve aspect ratio; scale so longest edge = maxDim
-        if (width > maxDim || height > maxDim) {
-          if (width >= height) {
-            height = Math.round(height * (maxDim / width));
-            width = maxDim;
-          } else {
-            width = Math.round(width * (maxDim / height));
-            height = maxDim;
-          }
-        }
+        const sw = img.naturalWidth, sh = img.naturalHeight;
+        // Source crop box: take the largest centered square that fits the image.
+        const cropSize = Math.min(sw, sh);
+        const sx = Math.floor((sw - cropSize) / 2);
+        const sy = Math.floor((sh - cropSize) / 2);
         const canvas = document.createElement('canvas');
-        canvas.width = width; canvas.height = height;
+        canvas.width = size;
+        canvas.height = size;
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
+        // High-quality resampling
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, sx, sy, cropSize, cropSize, 0, 0, size, size);
         try {
           const dataUrl = canvas.toDataURL('image/jpeg', quality);
           resolve(dataUrl);

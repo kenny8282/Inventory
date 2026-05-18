@@ -31,7 +31,7 @@ import base64
 from pathlib import Path
 from flask import Flask, request, jsonify, abort
 
-APP_VERSION = "1.18.0"  # Slice 7: inventory buy_url, sub_items, photo fields (1-photo, downscaled client-side)
+APP_VERSION = "1.18.1"  # Slice 7b: square photo crop, Buy→Search button fallback (Google)
 
 # Where data lives. Change with env var if you want a different path.
 DATA_DIR = Path(os.environ.get("GFLF_DATA_DIR", "/var/lib/gridfinity"))
